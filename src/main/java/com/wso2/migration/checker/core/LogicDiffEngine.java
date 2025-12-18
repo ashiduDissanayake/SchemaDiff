@@ -1,14 +1,13 @@
 package com.wso2.migration.checker.core;
 
-import com.example.driftmaster.model.DatabaseConfig;
-import com.example.driftmaster.model.LogicDrift;
-import com.example.driftmaster.util.HashUtil;
-import com.example.driftmaster.util.LogicQueryProvider;
+import com.wso2.migration.checker.model.DatabaseConfig;
+import com.wso2.migration.checker.model.LogicDrift;
+import com.wso2.migration.checker.util.HashUtil;
+import com.wso2.migration.checker.util.LogicQueryProvider;
+import com.wso2.migration.checker.DriftMaster.DatabaseType;
 
 import java.sql.*;
 import java.util.*;
-
-import static com.example.driftmaster.DriftMaster.DatabaseType;
 
 public class LogicDiffEngine {
 
@@ -77,8 +76,8 @@ public class LogicDiffEngine {
     private Map<String, String> executeLogicQuery(Connection conn, String query, String type) throws SQLException {
         Map<String, String> results = new HashMap<>();
 
-        try (Statement stmt = conn. createStatement();
-             ResultSet rs = stmt. executeQuery(query)) {
+        try (Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery(query)) {
 
             while (rs.next()) {
                 String name = rs.getString(1);

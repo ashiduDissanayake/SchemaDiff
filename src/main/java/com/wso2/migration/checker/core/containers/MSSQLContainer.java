@@ -1,6 +1,6 @@
 package com.wso2.migration.checker.core.containers;
 
-import com.example.driftmaster.core.ContainerManager;
+import com.wso2.migration.checker.core.ContainerManager;
 import org.testcontainers.containers.MSSQLServerContainer;
 
 public class MSSQLContainer extends ContainerManager {
@@ -8,7 +8,7 @@ public class MSSQLContainer extends ContainerManager {
 
     @Override
     public void start() {
-        container = new MSSQLServerContainer<>("mcr.microsoft. com/mssql/server: 2022-latest")
+        container = new MSSQLServerContainer<>("mcr.microsoft.com/mssql/server:2022-latest")
                 .acceptLicense()
                 .withReuse(false);
         container.start();
@@ -21,7 +21,7 @@ public class MSSQLContainer extends ContainerManager {
 
     @Override
     public String getJdbcUrl() {
-        return container. getJdbcUrl();
+        return container.getJdbcUrl();
     }
 
     @Override

@@ -14,7 +14,7 @@ public class DriftReport {
     public DriftReport(StructuralDrift structuralDrift, LogicDrift logicDrift) {
         this.structuralDrift = structuralDrift;
         this.logicDrift = logicDrift;
-        this. summary = buildSummary();
+        this.summary = buildSummary();
     }
 
     private Map<String, Integer> buildSummary() {
@@ -35,7 +35,7 @@ public class DriftReport {
 
     public String toJson() throws Exception {
         ObjectMapper mapper = new ObjectMapper();
-        mapper.enable(SerializationFeature. INDENT_OUTPUT);
+        mapper.enable(SerializationFeature.INDENT_OUTPUT);
         
         Map<String, Object> report = new HashMap<>();
         report.put("structuralDrift", structuralDrift);

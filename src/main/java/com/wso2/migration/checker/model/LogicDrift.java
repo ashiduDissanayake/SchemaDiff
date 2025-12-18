@@ -9,7 +9,7 @@ public class LogicDrift {
     private List<String> changedLogic = new ArrayList<>();
 
     public boolean hasDrift() {
-        return !missingLogic.isEmpty() || !unexpectedLogic.isEmpty() || ! changedLogic.isEmpty();
+        return !missingLogic.isEmpty() || !unexpectedLogic.isEmpty() || !changedLogic.isEmpty();
     }
 
     public List<String> getMissingLogic() { return missingLogic; }
