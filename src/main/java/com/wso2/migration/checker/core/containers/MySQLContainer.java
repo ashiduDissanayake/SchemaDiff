@@ -20,7 +20,11 @@ public class MySQLContainer extends ContainerManager {
 
     @Override
     public String getJdbcUrl() {
-        return container.getJdbcUrl();
+        String url = container.getJdbcUrl();
+        if (!url.contains("allowMultiQueries=true")) {
+            return url + (url.contains("?") ? "&" : "?") + "allowMultiQueries=true";
+        }
+        return url;
     }
 
     @Override
