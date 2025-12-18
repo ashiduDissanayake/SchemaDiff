@@ -1,8 +1,8 @@
 package com.wso2.migration.checker.core;
 
-import com.example. driftmaster.model.DriftReport;
-import com.example. driftmaster.model.LogicDrift;
-import com. example.driftmaster.model. StructuralDrift;
+import com.wso2.migration.checker.model.DriftReport;
+import com.wso2.migration.checker.model.LogicDrift;
+import com.wso2.migration.checker.model.StructuralDrift;
 
 public class DriftReportBuilder {
 

@@ -1,6 +1,6 @@
 package com.wso2.migration.checker.model;
 
-import java.util. ArrayList;
+import java.util.ArrayList;
 import java.util.List;
 
 public class StructuralDrift {
@@ -22,7 +22,7 @@ public class StructuralDrift {
         return !missingTables.isEmpty() || !missingColumns.isEmpty() || 
                !missingIndexes.isEmpty() || !unexpectedTables.isEmpty() ||
                !unexpectedColumns.isEmpty() || !changedTables.isEmpty() ||
-               !changedColumns.isEmpty() || !missingPrimaryKeys. isEmpty() ||
+               !changedColumns.isEmpty() || !missingPrimaryKeys.isEmpty() ||
                !missingForeignKeys.isEmpty() || !missingConstraints.isEmpty();
     }
 

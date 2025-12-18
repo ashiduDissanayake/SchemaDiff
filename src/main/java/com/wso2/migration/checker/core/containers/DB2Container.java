@@ -1,7 +1,7 @@
 package com.wso2.migration.checker.core.containers;
 
-import com.example.driftmaster.core.ContainerManager;
-import org.testcontainers.containers. Db2Container;
+import com.wso2.migration.checker.core.ContainerManager;
+import org.testcontainers.containers.Db2Container;
 
 public class DB2Container extends ContainerManager {
     private Db2Container container;
@@ -11,7 +11,7 @@ public class DB2Container extends ContainerManager {
         container = new Db2Container("icr.io/db2_community/db2:latest")
                 .acceptLicense()
                 .withReuse(false);
-        container. start();
+        container.start();
     }
 
     @Override

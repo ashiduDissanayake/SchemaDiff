@@ -1,11 +1,11 @@
 package com.wso2.migration.checker;
 
-import com.wso2.migration.checker.driftmaster.core.*;
-import com.wso2.migration.checker.driftmaster.core.containers.*;
-import com.wso2.migration.checker.driftmaster.model.*;
+import com.wso2.migration.checker.core.*;
+import com.wso2.migration.checker.core.containers.*;
+import com.wso2.migration.checker.model.*;
 import picocli.CommandLine;
-import picocli.CommandLine. Command;
-import picocli. CommandLine.Option;
+import picocli.CommandLine.Command;
+import picocli.CommandLine.Option;
 
 import java.io.File;
 import java.util.concurrent.Callable;
@@ -23,7 +23,7 @@ public class DriftMaster implements Callable<Integer> {
     @Option(names = {"--reference-pass"}, required = true, description = "Reference DB password")
     String referencePass;
 
-    @Option(names = {"--target-schema"}, description = "Path to . sql file for target schema")
+    @Option(names = {"--target-schema"}, description = "Path to .sql file for target schema")
     File targetSchema;
 
     @Option(names = {"--target-jdbc"}, description = "Target DB JDBC URL (alternative to --target-schema)")
@@ -55,7 +55,7 @@ public class DriftMaster implements Callable<Integer> {
 
                 // Provision schema
                 System.out.println("📦 Provisioning schema into container...");
-                ProvisioningEngine provisioner = new ProvisioningEngine(containerManager. getJdbcUrl(),
+                ProvisioningEngine provisioner = new ProvisioningEngine(containerManager.getJdbcUrl(),
                         containerManager.getUsername(), containerManager.getPassword());
                 provisioner.execute(targetSchema);
 
@@ -88,7 +88,7 @@ public class DriftMaster implements Callable<Integer> {
             return report.hasDrift() ? 1 : 0;
 
         } catch (Exception e) {
-            System. err.println("❌ Error: " + e.getMessage());
+            System.err.println("❌ Error: " + e.getMessage());
             e.printStackTrace();
             return 2;
         } finally {
@@ -114,10 +114,10 @@ public class DriftMaster implements Callable<Integer> {
         System.exit(exitCode);
     }
 
-    enum DatabaseType {
+    public enum DatabaseType {
         ORACLE, POSTGRES, MYSQL, MSSQL, DB2;
 
-        static DatabaseType fromString(String s) {
+        public static DatabaseType fromString(String s) {
             return switch (s.toLowerCase()) {
                 case "oracle" -> ORACLE;
                 case "postgres", "postgresql" -> POSTGRES;

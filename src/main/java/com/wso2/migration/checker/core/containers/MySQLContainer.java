@@ -1,14 +1,13 @@
 package com.wso2.migration.checker.core.containers;
 
-import com.example.driftmaster. core.ContainerManager;
-import org.testcontainers.containers.MySQLContainer;
+import com.wso2.migration.checker.core.ContainerManager;
 
 public class MySQLContainer extends ContainerManager {
-    private MySQLContainer<?> container;
+    private org.testcontainers.containers.MySQLContainer<?> container;
 
     @Override
     public void start() {
-        container = new MySQLContainer<>("mysql:8").withReuse(false);
+        container = new org.testcontainers.containers.MySQLContainer<>("mysql:8").withReuse(false);
         container.start();
     }
 

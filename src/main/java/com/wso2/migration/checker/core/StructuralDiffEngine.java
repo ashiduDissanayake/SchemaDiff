@@ -1,24 +1,23 @@
 package com.wso2.migration.checker.core;
 
-import com.example.driftmaster.model.DatabaseConfig;
-import com.example. driftmaster.model.StructuralDrift;
-import liquibase. Liquibase;
+import com.wso2.migration.checker.model.DatabaseConfig;
+import com.wso2.migration.checker.model.StructuralDrift;
+import com.wso2.migration.checker.DriftMaster.DatabaseType;
+import liquibase.Liquibase;
 import liquibase.database.Database;
 import liquibase.database.DatabaseFactory;
 import liquibase.database.jvm.JdbcConnection;
 import liquibase.diff.DiffResult;
 import liquibase.diff.compare.CompareControl;
 import liquibase.diff.output.DiffOutputControl;
-import liquibase. diff.output.changelog.DiffToChangeLog;
+import liquibase.diff.output.changelog.DiffToChangeLog;
 import liquibase.serializer.core.string.StringChangeLogSerializer;
 import liquibase.structure.DatabaseObject;
 import liquibase.structure.core.*;
 
-import java. sql.Connection;
-import java.sql. DriverManager;
+import java.sql.Connection;
+import java.sql.DriverManager;
 import java.util.*;
-
-import static com.example.driftmaster.DriftMaster.DatabaseType;
 
 public class StructuralDiffEngine {
 
@@ -97,15 +96,23 @@ public class StructuralDiffEngine {
         drift.getUnexpectedIndexes().addAll(getObjectNames(diffResult.getUnexpectedObjects(Index.class)));
 
         // Changed objects
-        drift.getChangedTables().addAll(getObjectNames(diffResult.getChangedObjects(Table.class)));
-        drift.getChangedColumns().addAll(getObjectNames(diffResult.getChangedObjects(Column.class)));
+        drift.getChangedTables().addAll(getChangedObjectNames(diffResult.getChangedObjects(Table.class)));
+        drift.getChangedColumns().addAll(getChangedObjectNames(diffResult.getChangedObjects(Column.class)));
 
         return drift;
     }
 
-    private List<String> getObjectNames(Set<?  extends DatabaseObject> objects) {
+    private List<String> getObjectNames(Set<? extends DatabaseObject> objects) {
         List<String> names = new ArrayList<>();
-        for (DatabaseObject obj :  objects) {
+        for (DatabaseObject obj : objects) {
+            names.add(obj.getName());
+        }
+        return names;
+    }
+
+    private List<String> getChangedObjectNames(Map<? extends DatabaseObject, ?> objects) {
+        List<String> names = new ArrayList<>();
+        for (DatabaseObject obj : objects.keySet()) {
             names.add(obj.getName());
         }
         return names;

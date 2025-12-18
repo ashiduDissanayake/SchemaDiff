@@ -1,6 +1,6 @@
 package com.wso2.migration.checker.util;
 
-import static com.example.driftmaster. DriftMaster.DatabaseType;
+import static com.wso2.migration.checker.DriftMaster.DatabaseType;
 
 public class LogicQueryProvider {
 
@@ -57,7 +57,7 @@ public class LogicQueryProvider {
                 """;
             case MSSQL -> """
                 SELECT name, OBJECT_DEFINITION(object_id)
-                FROM sys. procedures
+                FROM sys.procedures
                 WHERE type = 'P'
                 """;
             case DB2 -> """

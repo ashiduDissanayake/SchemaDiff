@@ -1,10 +1,10 @@
 package com.wso2.migration.checker.core.containers;
 
-import com. example.driftmaster.core. ContainerManager;
-import org. testcontainers.containers.PostgreSQLContainer;
+import com.wso2.migration.checker.core.ContainerManager;
+import org.testcontainers.containers.PostgreSQLContainer;
 
 public class PostgresContainer extends ContainerManager {
-    private PostgreSQLContainer<? > container;
+    private PostgreSQLContainer<?> container;
 
     @Override
     public void start() {
