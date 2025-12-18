@@ -20,18 +20,32 @@ public class ProvisioningEngine {
     public void execute(File sqlFile) throws Exception {
         String sql = Files.readString(sqlFile.toPath());
         
+        // Remove Byte Order Mark (BOM) if present
+        if (sql.startsWith("\uFEFF")) {
+            sql = sql.substring(1);
+        }
+
         try (Connection conn = DriverManager.getConnection(jdbcUrl, username, password);
              Statement stmt = conn.createStatement()) {
             
-            // Split SQL by statement delimiter and execute each
-            String[] statements = sql.split(";");
-            for (String statement : statements) {
-                String trimmed = statement.trim();
-                if (! trimmed.isEmpty() && !trimmed.startsWith("--")) {
-                    try {
-                        stmt.execute(trimmed);
-                    } catch (Exception e) {
-                        throw new RuntimeException("Failed to execute SQL: " + trimmed, e);
+            // If allowMultiQueries is enabled, execute the whole script at once
+            if (jdbcUrl.contains("allowMultiQueries=true")) {
+                try {
+                    stmt.execute(sql);
+                } catch (Exception e) {
+                    throw new RuntimeException("Failed to execute SQL script", e);
+                }
+            } else {
+                // Split SQL by statement delimiter and execute each
+                String[] statements = sql.split(";");
+                for (String statement : statements) {
+                    String trimmed = statement.trim();
+                    if (!trimmed.isEmpty() && !trimmed.startsWith("--")) {
+                        try {
+                            stmt.execute(trimmed);
+                        } catch (Exception e) {
+                            throw new RuntimeException("Failed to execute SQL: " + trimmed, e);
+                        }
                     }
                 }
             }
