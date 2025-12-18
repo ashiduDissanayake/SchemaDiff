@@ -7,9 +7,7 @@ public class MySQLContainer extends ContainerManager {
 
     @Override
     public void start() {
-        container = new org.testcontainers.containers.MySQLContainer<>("mysql:8.0")
-                .withUrlParam("allowMultiQueries", "true")
-                .withReuse(false);
+        container = new org.testcontainers.containers.MySQLContainer<>("mysql:8.0").withReuse(false);
         container.start();
     }
 
