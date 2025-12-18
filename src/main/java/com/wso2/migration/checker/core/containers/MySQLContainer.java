@@ -7,7 +7,9 @@ public class MySQLContainer extends ContainerManager {
 
     @Override
     public void start() {
-        container = new org.testcontainers.containers.MySQLContainer<>("mysql:8.0").withReuse(false);
+        container = new org.testcontainers.containers.MySQLContainer<>("mysql:8.0")
+                .withCommand("--character-set-server=latin1", "--collation-server=latin1_swedish_ci")
+                .withReuse(false);
         container.start();
     }
 
