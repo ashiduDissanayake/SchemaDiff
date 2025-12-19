@@ -71,7 +71,7 @@ public class StructuralDiffEngine {
 
     private void loadDriver(DatabaseType dbType) throws Exception {
         switch (dbType) {
-            case ORACLE -> Class.forName("oracle.jdbc. OracleDriver");
+            case ORACLE -> Class.forName("oracle.jdbc.OracleDriver");
             case POSTGRES -> Class.forName("org.postgresql.Driver");
             case MYSQL -> Class.forName("com.mysql.cj.jdbc.Driver");
             case MSSQL -> Class.forName("com.microsoft.sqlserver.jdbc.SQLServerDriver");

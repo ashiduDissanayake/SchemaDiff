@@ -14,19 +14,19 @@ import java.util.concurrent.Callable;
         description = "Detects schema and logic drift between databases")
 public class DriftMaster implements Callable<Integer> {
 
-    @Option(names = {"--reference"}, required = true, description = "Reference DB JDBC URL")
+    @Option(names = {"--reference"}, description = "Reference DB JDBC URL")
     String referenceJdbc;
 
-    @Option(names = {"--reference-user"}, required = true, description = "Reference DB username")
+    @Option(names = {"--reference-user"}, description = "Reference DB username")
     String referenceUser;
 
-    @Option(names = {"--reference-pass"}, required = true, description = "Reference DB password")
+    @Option(names = {"--reference-pass"}, description = "Reference DB password")
     String referencePass;
 
-    @Option(names = {"--target-schema"}, description = "Path to .sql file for target schema")
-    File targetSchema;
+    @Option(names = {"--reference-schema"}, description = "Path to . sql file for reference schema")
+    File referenceSchema;
 
-    @Option(names = {"--target-jdbc"}, description = "Target DB JDBC URL (alternative to --target-schema)")
+    @Option(names = {"--target"}, description = "Target DB JDBC URL")
     String targetJdbc;
 
     @Option(names = {"--target-user"}, description = "Target DB username")
@@ -35,47 +35,83 @@ public class DriftMaster implements Callable<Integer> {
     @Option(names = {"--target-pass"}, description = "Target DB password")
     String targetPass;
 
+    @Option(names = {"--target-schema"}, description = "Path to .sql file for target schema")
+    File targetSchema;
+
     @Option(names = {"--db"}, required = true, description = "Database type:  oracle, postgres, mysql, mssql, db2")
     String dbType;
 
     @Override
     public Integer call() throws Exception {
-        ContainerManager containerManager = null;
+        ContainerManager referenceContainer = null;
+        ContainerManager targetContainer = null;
+        DatabaseConfig referenceConfig;
         DatabaseConfig targetConfig;
 
         try {
             // Parse and validate database type
             DatabaseType type = DatabaseType.fromString(dbType);
 
-            // Determine target configuration
-            if (targetSchema != null) {
-                System.out.println("🚀 Starting ephemeral " + type + " container...");
-                containerManager = createContainer(type);
-                containerManager.start();
+            // ========== REFERENCE CONFIGURATION ==========
+            if (referenceSchema != null) {
+                // Reference is a SQL file -> Use ephemeral container
+                System.out.println("🚀 Starting ephemeral " + type + " container for reference schema.. .");
+                referenceContainer = createContainer(type);
+                referenceContainer.start();
 
-                // Provision schema
-                System.out.println("📦 Provisioning schema into container...");
-                ProvisioningEngine provisioner = new ProvisioningEngine(containerManager.getJdbcUrl(),
-                        containerManager.getUsername(), containerManager.getPassword());
-                provisioner.execute(targetSchema);
+                System.out.println("📦 Provisioning reference schema into container...");
+                ProvisioningEngine provisioner = new ProvisioningEngine(
+                        referenceContainer.getJdbcUrl(),
+                        referenceContainer.getUsername(),
+                        referenceContainer.getPassword()
+                );
+                provisioner. execute(referenceSchema);
 
-                targetConfig = new DatabaseConfig(containerManager.getJdbcUrl(),
-                        containerManager.getUsername(), containerManager.getPassword());
-            } else if (targetJdbc != null) {
-                targetConfig = new DatabaseConfig(targetJdbc, targetUser, targetPass);
+                referenceConfig = new DatabaseConfig(
+                        referenceContainer.getJdbcUrl(),
+                        referenceContainer.getUsername(),
+                        referenceContainer.getPassword()
+                );
+            } else if (referenceJdbc != null) {
+                // Reference is a live database
+                referenceConfig = new DatabaseConfig(referenceJdbc, referenceUser, referencePass);
             } else {
-                throw new IllegalArgumentException("Must provide either --target-schema or --target-jdbc");
+                throw new IllegalArgumentException("Must provide either --reference or --reference-schema");
             }
 
-            DatabaseConfig referenceConfig = new DatabaseConfig(referenceJdbc, referenceUser, referencePass);
+            // ========== TARGET CONFIGURATION ==========
+            if (targetSchema != null) {
+                // Target is a SQL file -> Use ephemeral container
+                System.out.println("🚀 Starting ephemeral " + type + " container for target schema...");
+                targetContainer = createContainer(type);
+                targetContainer.start();
 
-            // Perform structural diff
-            System.out.println("🔍 Analyzing structural drift...");
+                System.out.println("📦 Provisioning target schema into container...");
+                ProvisioningEngine provisioner = new ProvisioningEngine(
+                        targetContainer.getJdbcUrl(),
+                        targetContainer.getUsername(),
+                        targetContainer.getPassword()
+                );
+                provisioner.execute(targetSchema);
+
+                targetConfig = new DatabaseConfig(
+                        targetContainer.getJdbcUrl(),
+                        targetContainer.getUsername(),
+                        targetContainer.getPassword()
+                );
+            } else if (targetJdbc != null) {
+                // Target is a live database
+                targetConfig = new DatabaseConfig(targetJdbc, targetUser, targetPass);
+            } else {
+                throw new IllegalArgumentException("Must provide either --target or --target-schema");
+            }
+
+            // ========== PERFORM COMPARISON ==========
+            System. out.println("🔍 Analyzing structural drift...");
             StructuralDiffEngine structuralEngine = new StructuralDiffEngine();
             StructuralDrift structuralDrift = structuralEngine.compare(referenceConfig, targetConfig, type);
 
-            // Perform logic diff
-            System.out.println("🔍 Analyzing logic drift...");
+            System.out. println("🔍 Analyzing logic drift...");
             LogicDiffEngine logicEngine = new LogicDiffEngine();
             LogicDrift logicDrift = logicEngine.compare(referenceConfig, targetConfig, type);
 
@@ -88,13 +124,18 @@ public class DriftMaster implements Callable<Integer> {
             return report.hasDrift() ? 1 : 0;
 
         } catch (Exception e) {
-            System.err.println("❌ Error: " + e.getMessage());
+            System.err.println("❌ Error:  " + e.getMessage());
             e.printStackTrace();
             return 2;
         } finally {
-            if (containerManager != null) {
-                System.out.println("🧹 Cleaning up containers...");
-                containerManager.stop();
+            // Cleanup containers
+            if (referenceContainer != null) {
+                System.out.println("🧹 Cleaning up reference container...");
+                referenceContainer.stop();
+            }
+            if (targetContainer != null) {
+                System.out.println("🧹 Cleaning up target container...");
+                targetContainer. stop();
             }
         }
     }
@@ -117,7 +158,7 @@ public class DriftMaster implements Callable<Integer> {
     public enum DatabaseType {
         ORACLE, POSTGRES, MYSQL, MSSQL, DB2;
 
-        public static DatabaseType fromString(String s) {
+        static DatabaseType fromString(String s) {
             return switch (s.toLowerCase()) {
                 case "oracle" -> ORACLE;
                 case "postgres", "postgresql" -> POSTGRES;
