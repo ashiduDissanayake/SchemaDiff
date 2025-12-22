@@ -19,7 +19,9 @@ public class ContainerManager {
     private GenericContainer<? > createContainer(String image, DatabaseType type) {
         return switch (type) {
             case POSTGRES -> new PostgreSQLContainer<>(image);
-            case MYSQL -> new MySQLContainer<>(image);
+            case MYSQL -> new MySQLContainer<>(image)
+                    .withCommand("--character-set-server=latin1", "--collation-server=latin1_swedish_ci")
+                    .withUrlParam("allowMultiQueries", "true");
             case ORACLE -> new OracleContainer(image).withReuse(false);
             case MSSQL -> new MSSQLServerContainer<>(image).acceptLicense();
             case DB2 -> new Db2Container(image).acceptLicense();

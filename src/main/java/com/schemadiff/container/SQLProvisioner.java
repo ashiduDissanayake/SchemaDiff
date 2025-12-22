@@ -21,9 +21,20 @@ public class SQLProvisioner {
         try (Statement stmt = connection.createStatement()) {
             for (String statement : statements) {
                 String trimmed = statement.trim();
-                // Basic comment filtering
-                if (!trimmed.isEmpty() && !trimmed.startsWith("--") && !trimmed.startsWith("/*")) {
-                    stmt.execute(trimmed);
+
+                // Handle comments that might be attached to the statement due to splitting
+                String[] lines = trimmed.split("\\r?\\n");
+                StringBuilder cleanSql = new StringBuilder();
+                for (String line : lines) {
+                    String lineTrimmed = line.trim();
+                    if (!lineTrimmed.startsWith("--") && !lineTrimmed.startsWith("/*") && !lineTrimmed.isEmpty()) {
+                        cleanSql.append(line).append(" ");
+                    }
+                }
+
+                String finalSql = cleanSql.toString().trim();
+                if (!finalSql.isEmpty()) {
+                    stmt.execute(finalSql);
                 }
             }
         }
