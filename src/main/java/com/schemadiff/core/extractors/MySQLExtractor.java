@@ -40,7 +40,7 @@ public class MySQLExtractor extends MetadataExtractor {
 
     private void extractColumns(Connection conn, DatabaseMetadata metadata) throws SQLException {
         String query = """
-            SELECT TABLE_NAME, COLUMN_NAME, DATA_TYPE, CHARACTER_MAXIMUM_LENGTH,
+            SELECT TABLE_NAME, COLUMN_NAME, DATA_TYPE, COLUMN_TYPE, CHARACTER_MAXIMUM_LENGTH,
                    NUMERIC_PRECISION, NUMERIC_SCALE, IS_NULLABLE, COLUMN_DEFAULT
             FROM INFORMATION_SCHEMA. COLUMNS
             WHERE TABLE_SCHEMA = DATABASE()
@@ -66,6 +66,7 @@ public class MySQLExtractor extends MetadataExtractor {
 
     private String buildDataType(ResultSet rs) throws SQLException {
         String baseType = rs.getString("DATA_TYPE").toLowerCase();
+        String columnType = rs.getString("COLUMN_TYPE").toLowerCase();
 
         // Handle lengths - use getLong for safety with UNSIGNED values
         Long lengthLong = null;
@@ -92,18 +93,27 @@ public class MySQLExtractor extends MetadataExtractor {
             // Ignore if column doesn't support this
         }
 
+        String typeDefinition = baseType;
+
         // Build type string - cap extremely large values for readability
         if (lengthLong != null) {
             long length = Math.min(lengthLong, 999999);
-            return baseType + "(" + length + ")";
+            typeDefinition = baseType + "(" + length + ")";
+        } else if (precisionLong != null && scaleLong != null) {
+            if (scaleLong == 0) {
+                typeDefinition = baseType + "(" + precisionLong + ")";
+            } else {
+                typeDefinition = baseType + "(" + precisionLong + "," + scaleLong + ")";
+            }
+        } else if (precisionLong != null) {
+            typeDefinition = baseType + "(" + precisionLong + ")";
         }
-        if (precisionLong != null && scaleLong != null) {
-            return baseType + "(" + precisionLong + "," + scaleLong + ")";
+
+        if (columnType.contains("unsigned")) {
+            typeDefinition += " unsigned";
         }
-        if (precisionLong != null) {
-            return baseType + "(" + precisionLong + ")";
-        }
-        return baseType;
+
+        return typeDefinition;
     }
 
     private void extractConstraints(Connection conn, DatabaseMetadata metadata) throws SQLException {
@@ -135,10 +145,10 @@ public class MySQLExtractor extends MetadataExtractor {
 
         // Foreign Keys
         String fkQuery = """
-            SELECT TABLE_NAME, COLUMN_NAME, REFERENCED_TABLE_NAME, REFERENCED_COLUMN_NAME
+            SELECT CONSTRAINT_NAME, TABLE_NAME, COLUMN_NAME, REFERENCED_TABLE_NAME, REFERENCED_COLUMN_NAME
             FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE
             WHERE CONSTRAINT_SCHEMA = DATABASE() AND REFERENCED_TABLE_NAME IS NOT NULL
-            ORDER BY TABLE_NAME, ORDINAL_POSITION
+            ORDER BY TABLE_NAME, CONSTRAINT_NAME, ORDINAL_POSITION
             """;
 
         try (Statement stmt = conn.createStatement(); ResultSet rs = stmt.executeQuery(fkQuery)) {
@@ -146,13 +156,14 @@ public class MySQLExtractor extends MetadataExtractor {
             Map<String, String> fkTableMap = new HashMap<>(); // Track which table each FK belongs to
 
             while (rs.next()) {
+                String constraintName = rs.getString("CONSTRAINT_NAME");
                 String table = rs.getString("TABLE_NAME");
                 String column = rs.getString("COLUMN_NAME");
                 String refTable = rs.getString("REFERENCED_TABLE_NAME");
 
-                String key = table + "|" + refTable;
+                String key = table + "|" + constraintName;
                 ConstraintMetadata fk = fkMap.computeIfAbsent(key, k ->
-                    new ConstraintMetadata(null, "FOREIGN_KEY", new ArrayList<>(), refTable)
+                    new ConstraintMetadata(constraintName, "FOREIGN_KEY", new ArrayList<>(), refTable)
                 );
                 fk.getColumns().add(column);
                 fkTableMap.put(key, table); // Store the table name for this FK
