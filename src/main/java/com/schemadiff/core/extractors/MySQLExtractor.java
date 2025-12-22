@@ -66,18 +66,43 @@ public class MySQLExtractor extends MetadataExtractor {
 
     private String buildDataType(ResultSet rs) throws SQLException {
         String baseType = rs.getString("DATA_TYPE").toLowerCase();
-        Integer length = rs.getInt("CHARACTER_MAXIMUM_LENGTH");
-        if (rs.wasNull()) length = null;
 
-        Integer precision = rs.getInt("NUMERIC_PRECISION");
-        if (rs.wasNull()) precision = null;
+        // Handle lengths - use getLong for safety with UNSIGNED values
+        Long lengthLong = null;
+        try {
+            lengthLong = rs.getLong("CHARACTER_MAXIMUM_LENGTH");
+            if (rs.wasNull()) lengthLong = null;
+        } catch (SQLException e) {
+            // Ignore if column doesn't support this
+        }
 
-        Integer scale = rs.getInt("NUMERIC_SCALE");
-        if (rs.wasNull()) scale = null;
+        Long precisionLong = null;
+        try {
+            precisionLong = rs.getLong("NUMERIC_PRECISION");
+            if (rs.wasNull()) precisionLong = null;
+        } catch (SQLException e) {
+            // Ignore if column doesn't support this
+        }
 
-        if (length != null) return baseType + "(" + length + ")";
-        if (precision != null && scale != null) return baseType + "(" + precision + "," + scale + ")";
-        if (precision != null) return baseType + "(" + precision + ")";
+        Long scaleLong = null;
+        try {
+            scaleLong = rs.getLong("NUMERIC_SCALE");
+            if (rs.wasNull()) scaleLong = null;
+        } catch (SQLException e) {
+            // Ignore if column doesn't support this
+        }
+
+        // Build type string - cap extremely large values for readability
+        if (lengthLong != null) {
+            long length = Math.min(lengthLong, 999999);
+            return baseType + "(" + length + ")";
+        }
+        if (precisionLong != null && scaleLong != null) {
+            return baseType + "(" + precisionLong + "," + scaleLong + ")";
+        }
+        if (precisionLong != null) {
+            return baseType + "(" + precisionLong + ")";
+        }
         return baseType;
     }
 
@@ -118,22 +143,30 @@ public class MySQLExtractor extends MetadataExtractor {
 
         try (Statement stmt = conn.createStatement(); ResultSet rs = stmt.executeQuery(fkQuery)) {
             Map<String, ConstraintMetadata> fkMap = new HashMap<>();
+            Map<String, String> fkTableMap = new HashMap<>(); // Track which table each FK belongs to
+
             while (rs.next()) {
                 String table = rs.getString("TABLE_NAME");
                 String column = rs.getString("COLUMN_NAME");
-                String refTable = rs. getString("REFERENCED_TABLE_NAME");
+                String refTable = rs.getString("REFERENCED_TABLE_NAME");
 
                 String key = table + "|" + refTable;
                 ConstraintMetadata fk = fkMap.computeIfAbsent(key, k ->
                     new ConstraintMetadata(null, "FOREIGN_KEY", new ArrayList<>(), refTable)
                 );
                 fk.getColumns().add(column);
+                fkTableMap.put(key, table); // Store the table name for this FK
             }
 
-            for (ConstraintMetadata fk : fkMap.values()) {
+            for (Map.Entry<String, ConstraintMetadata> entry : fkMap.entrySet()) {
+                ConstraintMetadata fk = entry.getValue();
                 fk.setSignature(SignatureGenerator.generate(fk));
-                TableMetadata table = metadata.getTable(fk.getColumns().get(0)); // Simplified
-                if (table != null) table.addConstraint(fk);
+
+                String tableName = fkTableMap.get(entry.getKey());
+                TableMetadata table = metadata.getTable(tableName);
+                if (table != null) {
+                    table.addConstraint(fk);
+                }
             }
         }
     }

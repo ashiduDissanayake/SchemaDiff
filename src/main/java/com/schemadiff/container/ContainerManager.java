@@ -16,10 +16,20 @@ public class ContainerManager {
         this.container = createContainer(image, type);
     }
 
-    private GenericContainer<? > createContainer(String image, DatabaseType type) {
+    private GenericContainer<?> createContainer(String image, DatabaseType type) {
         return switch (type) {
             case POSTGRES -> new PostgreSQLContainer<>(image);
-            case MYSQL -> new MySQLContainer<>(image);
+            case MYSQL -> {
+                MySQLContainer<?> mysql = new MySQLContainer<>(image)
+                    .withCommand(
+                        "--character-set-server=latin1",
+                        "--collation-server=latin1_swedish_ci",
+                        "--default-authentication-plugin=mysql_native_password",
+                        "--innodb-default-row-format=DYNAMIC",
+                        "--max-allowed-packet=256M"
+                    );
+                yield mysql;
+            }
             case ORACLE -> new OracleContainer(image).withReuse(false);
             case MSSQL -> new MSSQLServerContainer<>(image).acceptLicense();
             case DB2 -> new Db2Container(image).acceptLicense();
