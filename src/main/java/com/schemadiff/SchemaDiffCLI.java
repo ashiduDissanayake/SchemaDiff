@@ -4,17 +4,17 @@ import com.schemadiff.container.ContainerManager;
 import com.schemadiff.container.SQLProvisioner;
 import com.schemadiff.core.ComparisonEngine;
 import com.schemadiff.core.MetadataExtractor;
-import com.schemadiff. core.extractors.*;
+import com.schemadiff.core.extractors.*;
 import com.schemadiff.model.*;
 import com.schemadiff.util.JDBCHelper;
 import com.schemadiff.report.TreeReportBuilder;
 import picocli.CommandLine;
-import picocli.CommandLine. Command;
-import picocli. CommandLine.Option;
+import picocli.CommandLine.Command;
+import picocli.CommandLine.Option;
 
 import java.io.File;
 import java.sql.Connection;
-import java.util. concurrent.Callable;
+import java.util.concurrent.Callable;
 
 @Command(name = "schemadiff", mixinStandardHelpOptions = true, version = "2.0.0",
         description = "Custom schema drift detection with hierarchical tree output")
@@ -62,12 +62,14 @@ public class SchemaDiffCLI implements Callable<Integer> {
                 validateDockerImage();
                 refContainer = new ContainerManager(dockerImage, type);
                 refContainer.start();
-                new SQLProvisioner(refContainer. getConnection()).execute(new File(reference));
-                refMetadata = extractMetadata(refContainer.getConnection(), type);
+                try (Connection conn = refContainer.getConnection()) {
+                    new SQLProvisioner(conn).execute(new File(reference));
+                    refMetadata = extractMetadata(conn, type);
+                }
             } else {
-                Connection conn = JDBCHelper.connect(reference, refUser, refPass);
-                refMetadata = extractMetadata(conn, type);
-                conn.close();
+                try (Connection conn = JDBCHelper.connect(reference, refUser, refPass)) {
+                    refMetadata = extractMetadata(conn, type);
+                }
             }
 
             // Extract target metadata
@@ -76,12 +78,14 @@ public class SchemaDiffCLI implements Callable<Integer> {
                 validateDockerImage();
                 targetContainer = new ContainerManager(dockerImage, type);
                 targetContainer.start();
-                new SQLProvisioner(targetContainer.getConnection()).execute(new File(target));
-                targetMetadata = extractMetadata(targetContainer. getConnection(), type);
+                try (Connection conn = targetContainer.getConnection()) {
+                    new SQLProvisioner(conn).execute(new File(target));
+                    targetMetadata = extractMetadata(conn, type);
+                }
             } else {
-                Connection conn = JDBCHelper.connect(target, targetUser, targetPass);
-                targetMetadata = extractMetadata(conn, type);
-                conn. close();
+                try (Connection conn = JDBCHelper.connect(target, targetUser, targetPass)) {
+                    targetMetadata = extractMetadata(conn, type);
+                }
             }
 
             // Perform hierarchical comparison
@@ -96,7 +100,7 @@ public class SchemaDiffCLI implements Callable<Integer> {
             return result.hasDifferences() ? 1 : 0;
 
         } catch (Exception e) {
-            System.err.println("❌ Error: " + e. getMessage());
+            System.err.println("❌ Error: " + e.getMessage());
             e.printStackTrace();
             return 2;
         } finally {

@@ -14,11 +14,14 @@ public class SQLProvisioner {
 
     public void execute(File sqlFile) throws Exception {
         String sql = Files.readString(sqlFile.toPath());
+        // Simple splitting by semicolon, ignoring potential semicolons in quotes.
+        // This is a basic implementation. For production, consider using a proper SQL parser or Testcontainers ScriptUtils.
         String[] statements = sql.split(";");
 
         try (Statement stmt = connection.createStatement()) {
             for (String statement : statements) {
                 String trimmed = statement.trim();
+                // Basic comment filtering
                 if (!trimmed.isEmpty() && !trimmed.startsWith("--") && !trimmed.startsWith("/*")) {
                     stmt.execute(trimmed);
                 }
