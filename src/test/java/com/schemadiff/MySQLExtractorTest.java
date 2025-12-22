@@ -167,4 +167,171 @@ public class MySQLExtractorTest {
 
         assertEquals("int(10) unsigned", columns.get(0).getDataType());
     }
+
+    @Test
+    public void testCommonDataTypes() throws Exception {
+        // Setup mocks
+        Connection mockConn = mock(Connection.class);
+        Statement mockStmt = mock(Statement.class);
+        ResultSet mockRsTables = mock(ResultSet.class);
+        ResultSet mockRsColumns = mock(ResultSet.class);
+
+        when(mockConn.createStatement()).thenReturn(mockStmt);
+        when(mockStmt.executeQuery(anyString()))
+                .thenReturn(mockRsTables)
+                .thenReturn(mockRsColumns)
+                .thenReturn(mock(ResultSet.class)) // PKs
+                .thenReturn(mock(ResultSet.class)) // FKs
+                .thenReturn(mock(ResultSet.class)); // Indexes
+
+        // Table
+        when(mockRsTables.next()).thenReturn(true).thenReturn(false);
+        when(mockRsTables.getString("TABLE_NAME")).thenReturn("types_table");
+
+        // Columns: varchar(100), decimal(10,2), timestamp
+        when(mockRsColumns.next()).thenReturn(true, true, true, false);
+        when(mockRsColumns.getString("TABLE_NAME")).thenReturn("types_table");
+
+        // 1. VARCHAR(100)
+        when(mockRsColumns.getString("COLUMN_NAME")).thenReturn("col_varchar", "col_decimal", "col_timestamp");
+        when(mockRsColumns.getString("DATA_TYPE")).thenReturn("varchar", "decimal", "timestamp");
+        when(mockRsColumns.getString("COLUMN_TYPE")).thenReturn("varchar(100)", "decimal(10,2)", "timestamp");
+
+        // wasNull calls logic:
+        // 1. col_varchar: MAX_LEN=100 (not null), PREC=null (wasNull=true), SCALE=null (wasNull=true)
+        // 2. col_decimal: MAX_LEN=null (wasNull=true), PREC=10 (false), SCALE=2 (false)
+        // 3. col_timestamp: MAX_LEN=null (true), PREC=null (true), SCALE=null (true)
+
+        // Setup return values for getLong and wasNull
+        // Note: Mockito requires sequential setup for consecutive calls
+
+        // CHAR_MAX_LENGTH calls:
+        // 1 (varchar): 100
+        // 2 (decimal): 0 (will be followed by wasNull=true)
+        // 3 (timestamp): 0 (will be followed by wasNull=true)
+        when(mockRsColumns.getLong("CHARACTER_MAXIMUM_LENGTH")).thenReturn(100L, 0L, 0L);
+
+        // NUMERIC_PREC calls:
+        // 1 (varchar): 0 (wasNull=true)
+        // 2 (decimal): 10
+        // 3 (timestamp): 0 (wasNull=true)
+        when(mockRsColumns.getLong("NUMERIC_PRECISION")).thenReturn(0L, 10L, 0L);
+
+        // NUMERIC_SCALE calls:
+        // 1 (varchar): 0 (wasNull=true)
+        // 2 (decimal): 2
+        // 3 (timestamp): 0 (wasNull=true)
+        when(mockRsColumns.getLong("NUMERIC_SCALE")).thenReturn(0L, 2L, 0L);
+
+        // wasNull sequence (3 calls per column * 3 columns = 9 calls)
+        // Col 1: false (len), true (prec), true (scale)
+        // Col 2: true (len), false (prec), false (scale)
+        // Col 3: true (len), true (prec), true (scale)
+        when(mockRsColumns.wasNull()).thenReturn(
+            false, true, true,  // Varchar
+            true, false, false, // Decimal
+            true, true, true    // Timestamp
+        );
+
+        when(mockRsColumns.getString("IS_NULLABLE")).thenReturn("YES");
+        when(mockRsColumns.getString("COLUMN_DEFAULT")).thenReturn(null);
+
+        MySQLExtractor extractor = new MySQLExtractor();
+        DatabaseMetadata metadata = extractor.extract(mockConn);
+        TableMetadata table = metadata.getTable("types_table");
+
+        List<com.schemadiff.model.ColumnMetadata> cols = table.getColumns();
+        assertEquals(3, cols.size());
+
+        assertEquals("varchar(100)", cols.get(0).getDataType());
+        assertEquals(false, cols.get(0).isNotNull());
+
+        assertEquals("decimal(10,2)", cols.get(1).getDataType());
+        assertEquals("timestamp", cols.get(2).getDataType());
+    }
+
+    @Test
+    public void testPrimaryKeys() throws Exception {
+        Connection mockConn = mock(Connection.class);
+        Statement mockStmt = mock(Statement.class);
+        ResultSet mockRsTables = mock(ResultSet.class);
+        ResultSet mockRsPKs = mock(ResultSet.class);
+
+        when(mockConn.createStatement()).thenReturn(mockStmt);
+        when(mockStmt.executeQuery(anyString()))
+                .thenReturn(mockRsTables)
+                .thenReturn(mock(ResultSet.class)) // Columns
+                .thenReturn(mockRsPKs)
+                .thenReturn(mock(ResultSet.class)) // FKs
+                .thenReturn(mock(ResultSet.class)); // Indexes
+
+        when(mockRsTables.next()).thenReturn(true).thenReturn(false);
+        when(mockRsTables.getString("TABLE_NAME")).thenReturn("users");
+
+        // PK Result Set
+        // Composite PK: id, org_id
+        when(mockRsPKs.next()).thenReturn(true, true, false);
+        when(mockRsPKs.getString("TABLE_NAME")).thenReturn("users");
+        when(mockRsPKs.getString("COLUMN_NAME")).thenReturn("id", "org_id");
+
+        MySQLExtractor extractor = new MySQLExtractor();
+        DatabaseMetadata metadata = extractor.extract(mockConn);
+        TableMetadata table = metadata.getTable("users");
+
+        List<ConstraintMetadata> constraints = table.getConstraints();
+        // Constraint type for PK is "PRIMARY" in MySQLExtractor
+        long pkCount = constraints.stream().filter(c -> "PRIMARY".equals(c.getType())).count();
+        assertEquals(1, pkCount);
+
+        ConstraintMetadata pk = constraints.stream().filter(c -> "PRIMARY".equals(c.getType())).findFirst().get();
+        assertEquals(List.of("id", "org_id"), pk.getColumns());
+    }
+
+    @Test
+    public void testIndexes() throws Exception {
+        Connection mockConn = mock(Connection.class);
+        Statement mockStmt = mock(Statement.class);
+        ResultSet mockRsTables = mock(ResultSet.class);
+        ResultSet mockRsIndexes = mock(ResultSet.class);
+
+        when(mockConn.createStatement()).thenReturn(mockStmt);
+        when(mockStmt.executeQuery(anyString()))
+                .thenReturn(mockRsTables)
+                .thenReturn(mock(ResultSet.class)) // Columns
+                .thenReturn(mock(ResultSet.class)) // PKs
+                .thenReturn(mock(ResultSet.class)) // FKs
+                .thenReturn(mockRsIndexes);
+
+        when(mockRsTables.next()).thenReturn(true).thenReturn(false);
+        when(mockRsTables.getString("TABLE_NAME")).thenReturn("users");
+
+        // Indexes
+        // 1. idx_email (unique)
+        // 2. idx_name_city (composite, non-unique) - 2 rows
+        when(mockRsIndexes.next()).thenReturn(true, true, true, false);
+
+        when(mockRsIndexes.getString("TABLE_NAME")).thenReturn("users");
+        when(mockRsIndexes.getString("INDEX_NAME")).thenReturn("idx_email", "idx_name_city", "idx_name_city");
+        when(mockRsIndexes.getString("COLUMN_NAME")).thenReturn("email", "name", "city");
+
+        // NON_UNIQUE: 0 = Unique, 1 = Non-Unique
+        when(mockRsIndexes.getInt("NON_UNIQUE")).thenReturn(0, 1, 1);
+
+        MySQLExtractor extractor = new MySQLExtractor();
+        DatabaseMetadata metadata = extractor.extract(mockConn);
+        TableMetadata table = metadata.getTable("users");
+
+        List<com.schemadiff.model.IndexMetadata> indexes = table.getIndexes();
+        assertEquals(2, indexes.size());
+
+        // Check unique index
+        var idxEmail = indexes.stream().filter(i -> "idx_email".equals(i.getName())).findFirst().orElseThrow();
+        assertEquals(true, idxEmail.isUnique());
+        assertEquals(List.of("email"), idxEmail.getColumns());
+
+        // Check composite index
+        var idxComposite = indexes.stream().filter(i -> "idx_name_city".equals(i.getName())).findFirst().orElseThrow();
+        assertEquals(false, idxComposite.isUnique());
+        assertEquals(List.of("name", "city"), idxComposite.getColumns());
+    }
 }
