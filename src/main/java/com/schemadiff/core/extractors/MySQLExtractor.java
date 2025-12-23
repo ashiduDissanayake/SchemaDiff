@@ -718,7 +718,7 @@ public class MySQLExtractor extends MetadataExtractor {
                 if (table != null) {
                     table.addIndex(index);
                     log.trace("Added index to {}: {} ({})",
-                            builder.tableName, builder.indexName, builder.indexType);
+                            builder.tableName, builder.indexName, index.getIndexType());
                 } else {
                     progressListener.onWarning("Index found for non-existent table: " + builder.tableName);
                 }
@@ -803,4 +803,117 @@ public class MySQLExtractor extends MetadataExtractor {
         }
 
         throw lastException;
+    }    private boolean isRetryable(SQLException e) {
+        // Common transient errors: deadlock, lock wait timeout, connection issues
+        int errorCode = e.getErrorCode();
+        String sqlState = e.getSQLState();
+
+        if (sqlState != null && sqlState.startsWith("40")) { // Transaction rollback
+            return true;
+        }
+
+        // MySQL specific error codes
+        return errorCode == 1213 || // Deadlock found when trying to get lock
+               errorCode == 1205 || // Lock wait timeout exceeded
+               errorCode == 2006 || // MySQL server has gone away
+               errorCode == 2013;   // Lost connection to MySQL server during query
     }
+
+    private int countIndexes(DatabaseMetadata metadata) {
+        int count = 0;
+        for (TableMetadata table : metadata.getTables().values()) {
+            count += table.getIndexes().size();
+        }
+        return count;
+    }
+
+    private int countConstraints(DatabaseMetadata metadata) {
+        int count = 0;
+        for (TableMetadata table : metadata.getTables().values()) {
+            count += table.getConstraints().size();
+        }
+        return count;
+    }
+
+    @FunctionalInterface
+    private interface SQLCallable<V> {
+        V call() throws SQLException;
+    }
+
+    private static class NoOpProgress implements ExtractionProgress {
+        @Override public void onPhaseStart(String phase) {}
+        @Override public void onPhaseComplete(String phase, int itemsProcessed, long durationMs) {}
+        @Override public void onWarning(String message) {}
+    }
+
+    private record ForeignKeyIdentifier(String tableName, String constraintName) {}
+
+    private static class ForeignKeyBuilder {
+        final String tableName;
+        final String constraintName;
+        final String refTableName;
+        final String updateRule;
+        final String deleteRule;
+        final List<String> columns = new ArrayList<>();
+        final List<String> refColumns = new ArrayList<>();
+
+        ForeignKeyBuilder(String tableName, String constraintName, String refTableName,
+                         String updateRule, String deleteRule) {
+            this.tableName = tableName;
+            this.constraintName = constraintName;
+            this.refTableName = refTableName;
+            this.updateRule = updateRule;
+            this.deleteRule = deleteRule;
+        }
+
+        void addColumn(String column, String refColumn) {
+            columns.add(column);
+            refColumns.add(refColumn);
+        }
+
+        ConstraintMetadata build() {
+            ConstraintMetadata fk = new ConstraintMetadata(
+                    CONSTRAINT_TYPE_FK,
+                    constraintName,
+                    columns,
+                    null
+            );
+            fk.setReferencedTable(refTableName);
+            fk.setReferencedColumns(refColumns);
+            // Map rules roughly - normally would use enums
+            return fk;
+        }
+    }
+
+    private record IndexIdentifier(String tableName, String indexName) {}
+
+    private static class IndexBuilder {
+        final String tableName;
+        final String indexName;
+        final boolean unique;
+        final String indexType;
+        final String comment;
+        final List<String> columns = new ArrayList<>();
+
+        IndexBuilder(String tableName, String indexName, boolean unique, String indexType, String comment) {
+            this.tableName = tableName;
+            this.indexName = indexName;
+            this.unique = unique;
+            this.indexType = indexType;
+            this.comment = comment;
+        }
+
+        void addColumn(String column) {
+            columns.add(column);
+        }
+
+        IndexMetadata build() {
+            IndexMetadata index = new IndexMetadata(indexName, columns, unique);
+            index.setIndexType(indexType);
+            index.setComment(comment != null ? comment : "");
+            return index;
+        }
+    }
+
+    private record ConstraintIdentifier(String tableName, String constraintName) {}
+}
