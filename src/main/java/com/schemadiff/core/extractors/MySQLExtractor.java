@@ -553,14 +553,18 @@ public class MySQLExtractor extends MetadataExtractor {
     private int extractCheckConstraints(Connection conn, DatabaseMetadata metadata, String schemaName)
             throws SQLException {
         // Check constraints only available in MySQL 8.0.16+
+        // Need to join with TABLE_CONSTRAINTS to get the TABLE_NAME as CHECK_CONSTRAINTS doesn't have it in MySQL 8.0
         String query = """
             SELECT 
-                TABLE_NAME,
-                CONSTRAINT_NAME,
-                CHECK_CLAUSE
-            FROM INFORMATION_SCHEMA.CHECK_CONSTRAINTS
-            WHERE CONSTRAINT_SCHEMA = ?
-            ORDER BY TABLE_NAME, CONSTRAINT_NAME
+                tc.TABLE_NAME,
+                cc.CONSTRAINT_NAME,
+                cc.CHECK_CLAUSE
+            FROM INFORMATION_SCHEMA.CHECK_CONSTRAINTS cc
+            JOIN INFORMATION_SCHEMA.TABLE_CONSTRAINTS tc
+              ON cc.CONSTRAINT_SCHEMA = tc.CONSTRAINT_SCHEMA
+             AND cc.CONSTRAINT_NAME = tc.CONSTRAINT_NAME
+            WHERE cc.CONSTRAINT_SCHEMA = ?
+            ORDER BY tc.TABLE_NAME, cc.CONSTRAINT_NAME
             """;
 
         try {

@@ -1,0 +1,298 @@
+Mode: SCRIPT_VS_SCRIPT
+[main] INFO org.testcontainers.images.PullPolicy - Image pull policy will be performed by: DefaultPullPolicy()
+[main] INFO org.testcontainers.utility.ImageNameSubstitutor - Image name substitution will be performed by: DefaultImageNameSubstitutor (composite of 'ConfigurationFileImageNameSubstitutor' and 'PrefixingImageNameSubstitutor')
+[main] INFO org.testcontainers.dockerclient.DockerClientProviderStrategy - Loaded org.testcontainers.dockerclient.UnixSocketClientProviderStrategy from ~/.testcontainers.properties, will try it first
+[main] INFO org.testcontainers.dockerclient.DockerClientProviderStrategy - Found Docker environment with local Unix socket (unix:///var/run/docker.sock)
+[main] INFO org.testcontainers.DockerClientFactory - Docker host IP address is localhost
+[main] INFO org.testcontainers.DockerClientFactory - Connected to docker:
+  Server Version: 28.5.2
+  API Version: 1.51
+  Operating System: Ubuntu 24.04.3 LTS
+  Total Memory: 7959 MB
+[main] INFO tc.testcontainers/ryuk:0.5.1 - Creating container for image: testcontainers/ryuk:0.5.1
+[main] INFO org.testcontainers.utility.RegistryAuthLocator - Failure when attempting to lookup auth config. Please ignore if you don't have images in an authenticated registry. Details: (dockerImageName: testcontainers/ryuk:0.5.1, configFile: /root/.docker/config.json, configEnv: DOCKER_AUTH_CONFIG). Falling back to docker-java default behaviour. Exception message: Status 404: No config supplied. Checked in order: /root/.docker/config.json (file not found), DOCKER_AUTH_CONFIG (not set)
+[main] INFO tc.testcontainers/ryuk:0.5.1 - Container testcontainers/ryuk:0.5.1 is starting: bd2934cfd0c5793b8ca3c44b779434e559941c03e8b6cc54b5a4973e0d692a61
+[main] INFO tc.testcontainers/ryuk:0.5.1 - Container testcontainers/ryuk:0.5.1 started in PT0.61746781S
+[main] INFO org.testcontainers.utility.RyukResourceReaper - Ryuk started - will monitor and terminate Testcontainers containers on JVM exit
+[main] INFO org.testcontainers.DockerClientFactory - Checking the system...
+[main] INFO org.testcontainers.DockerClientFactory - ✔︎ Docker server version should be at least 1.6.0
+[main] INFO tc.mysql:8.0 - Creating container for image: mysql:8.0
+[main] INFO tc.mysql:8.0 - Container mysql:8.0 is starting: 3bd8d563f5dc70a44f8ab008e1fea8e7c23a0b5ffa603be116c9ce9ad27c116c
+[main] INFO tc.mysql:8.0 - Waiting for database connection to become available at jdbc:mysql://localhost:32786/test using query 'SELECT 1'
+[main] INFO tc.mysql:8.0 - Container mysql:8.0 started in PT15.712407649S
+[main] INFO tc.mysql:8.0 - Container is started (JDBC URL: jdbc:mysql://localhost:32786/test)
+✓ Executed 334 SQL statements successfully
+[main] INFO com.schemadiff.core.extractors.MySQLExtractor - Starting MySQL schema extraction
+[main] INFO com.schemadiff.core.extractors.MySQLExtractor - MySQL version: 8.0
+[main] INFO com.schemadiff.core.extractors.MySQLExtractor - Extracting schema: test
+[main] INFO com.schemadiff.core.extractors.MySQLExtractor - Schema extraction completed successfully in 613ms - Tables: 240, Indexes: 258, Constraints: 500
+[main] INFO tc.mysql:8.0 - Creating container for image: mysql:8.0
+[main] INFO tc.mysql:8.0 - Container mysql:8.0 is starting: 7f9fc01d481c1420412e565ab39ff807a2b07e2f0f9670aba03ef2c4a9ba67af
+[main] INFO tc.mysql:8.0 - Waiting for database connection to become available at jdbc:mysql://localhost:32787/test using query 'SELECT 1'
+[main] INFO tc.mysql:8.0 - Container mysql:8.0 started in PT16.622107389S
+[main] INFO tc.mysql:8.0 - Container is started (JDBC URL: jdbc:mysql://localhost:32787/test)
+✓ Executed 0 SQL statements successfully
+[main] INFO com.schemadiff.core.extractors.MySQLExtractor - Starting MySQL schema extraction
+[main] INFO com.schemadiff.core.extractors.MySQLExtractor - MySQL version: 8.0
+[main] INFO com.schemadiff.core.extractors.MySQLExtractor - Extracting schema: test
+[main] INFO com.schemadiff.core.extractors.MySQLExtractor - Schema extraction completed successfully in 28ms - Tables: 0, Indexes: 0, Constraints: 0
+
+═══════════════════════════════════════════════════════════
+[-] SCHEMA SUMMARY:  240 Differences Found
+═══════════════════════════════════════════════════════════
+ |
+ ├── [X] MISSING TABLES (240)
+ │   ├── AM_ALERT_EMAILLIST
+ │   ├── AM_ALERT_EMAILLIST_DETAILS
+ │   ├── AM_ALERT_TYPES
+ │   ├── AM_ALERT_TYPES_VALUES
+ │   ├── AM_API
+ │   ├── AM_API_AI_CONFIGURATION
+ │   ├── AM_API_CATEGORIES
+ │   ├── AM_API_CLIENT_CERTIFICATE
+ │   ├── AM_API_COMMENTS
+ │   ├── AM_API_DEFAULT_VERSION
+ │   ├── AM_API_ENDPOINTS
+ │   ├── AM_API_ENVIRONMENT_KEYS
+ │   ├── AM_API_EXTERNAL_API_MAPPING
+ │   ├── AM_API_LABEL_MAPPING
+ │   ├── AM_API_LC_EVENT
+ │   ├── AM_API_LC_PUBLISH_EVENTS
+ │   ├── AM_API_METADATA
+ │   ├── AM_API_OPERATION_MAPPING
+ │   ├── AM_API_OPERATION_POLICY
+ │   ├── AM_API_OPERATION_POLICY_MAPPING
+ │   ├── AM_API_POLICY_MAPPING
+ │   ├── AM_API_PRIMARY_EP_MAPPING
+ │   ├── AM_API_PRODUCT_MAPPING
+ │   ├── AM_API_RATINGS
+ │   ├── AM_API_RESOURCE_SCOPE_MAPPING
+ │   ├── AM_API_REVISION_METADATA
+ │   ├── AM_API_SEQUENCE_BACKEND
+ │   ├── AM_API_SERVICE_MAPPING
+ │   ├── AM_API_THROTTLE_POLICY
+ │   ├── AM_API_URL_MAPPING
+ │   ├── AM_APP_KEY_DOMAIN_MAPPING
+ │   ├── AM_APP_REVOKED_EVENT
+ │   ├── AM_APPLICATION
+ │   ├── AM_APPLICATION_ATTRIBUTES
+ │   ├── AM_APPLICATION_GROUP_MAPPING
+ │   ├── AM_APPLICATION_KEY_MAPPING
+ │   ├── AM_APPLICATION_REGISTRATION
+ │   ├── AM_ARTIFACT
+ │   ├── AM_BACKEND
+ │   ├── AM_BACKEND_OPERATION_MAPPING
+ │   ├── AM_BLOCK_CONDITIONS
+ │   ├── AM_CERTIFICATE_METADATA
+ │   ├── AM_COMMON_OPERATION_POLICY
+ │   ├── AM_CONDITION_GROUP
+ │   ├── AM_CORRELATION_CONFIGS
+ │   ├── AM_CORRELATION_PROPERTIES
+ │   ├── AM_DEPLOYED_REVISION
+ │   ├── AM_DEPLOYMENT_REVISION_MAPPING
+ │   ├── AM_DEVPORTAL_API_CONTENT
+ │   ├── AM_DEVPORTAL_API_REFERENCE
+ │   ├── AM_DEVPORTAL_ORG_CONTENT
+ │   ├── AM_EXTERNAL_STORES
+ │   ├── AM_GATEWAY_ENVIRONMENT
+ │   ├── AM_GATEWAY_PERMISSIONS
+ │   ├── AM_GATEWAY_POLICY_DEPLOYMENT
+ │   ├── AM_GATEWAY_POLICY_MAPPING
+ │   ├── AM_GATEWAY_POLICY_METADATA
+ │   ├── AM_GRAPHQL_COMPLEXITY
+ │   ├── AM_GW_API_ARTIFACTS
+ │   ├── AM_GW_API_DEPLOYMENTS
+ │   ├── AM_GW_INSTANCE_ENV_MAPPING
+ │   ├── AM_GW_INSTANCES
+ │   ├── AM_GW_PUBLISHED_API_DETAILS
+ │   ├── AM_GW_REVISION_DEPLOYMENT
+ │   ├── AM_GW_VHOST
+ │   ├── AM_HEADER_FIELD_CONDITION
+ │   ├── AM_IP_CONDITION
+ │   ├── AM_JWT_CLAIM_CONDITION
+ │   ├── AM_KEY_MANAGER
+ │   ├── AM_KEY_MANAGER_ALLOWED_ORGS
+ │   ├── AM_KEY_MANAGER_PERMISSIONS
+ │   ├── AM_LABEL
+ │   ├── AM_LLM_PROVIDER
+ │   ├── AM_LLM_PROVIDER_MODEL
+ │   ├── AM_MONETIZATION_USAGE
+ │   ├── AM_NOTIFICATION_SUBSCRIBER
+ │   ├── AM_OPERATION_POLICY
+ │   ├── AM_OPERATION_POLICY_DEFINITION
+ │   ├── AM_ORGANIZATION_MAPPING
+ │   ├── AM_POLICY_APPLICATION
+ │   ├── AM_POLICY_GLOBAL
+ │   ├── AM_POLICY_HARD_THROTTLING
+ │   ├── AM_POLICY_SUBSCRIPTION
+ │   ├── AM_QUERY_PARAMETER_CONDITION
+ │   ├── AM_REVISION
+ │   ├── AM_REVOKED_JWT
+ │   ├── AM_SCOPE
+ │   ├── AM_SCOPE_BINDING
+ │   ├── AM_SECURITY_AUDIT_UUID_MAPPING
+ │   ├── AM_SERVICE_CATALOG
+ │   ├── AM_SHARED_SCOPE
+ │   ├── AM_SUBJECT_ENTITY_REVOKED_EVENT
+ │   ├── AM_SUBSCRIBER
+ │   ├── AM_SUBSCRIPTION
+ │   ├── AM_SYSTEM_APPS
+ │   ├── AM_SYSTEM_CONFIGS
+ │   ├── AM_TASK_LOCK
+ │   ├── AM_TENANT_THEMES
+ │   ├── AM_THROTTLE_TIER_PERMISSIONS
+ │   ├── AM_TIER_PERMISSIONS
+ │   ├── AM_TRANSACTION_RECORDS
+ │   ├── AM_USAGE_UPLOADED_FILES
+ │   ├── AM_USER
+ │   ├── AM_WEBHOOKS_SUBSCRIPTION
+ │   ├── AM_WEBHOOKS_UNSUBSCRIPTION
+ │   ├── AM_WORKFLOWS
+ │   ├── CM_CONSENT_RECEIPT_PROPERTY
+ │   ├── CM_PII_CATEGORY
+ │   ├── CM_PURPOSE
+ │   ├── CM_PURPOSE_CATEGORY
+ │   ├── CM_PURPOSE_PII_CAT_ASSOC
+ │   ├── CM_RECEIPT
+ │   ├── CM_RECEIPT_SP_ASSOC
+ │   ├── CM_SP_PURPOSE_ASSOC
+ │   ├── CM_SP_PURPOSE_PII_CAT_ASSOC
+ │   ├── CM_SP_PURPOSE_PURPOSE_CAT_ASSC
+ │   ├── FIDO2_DEVICE_STORE
+ │   ├── FIDO_DEVICE_STORE
+ │   ├── GOV_ARTIFACT
+ │   ├── GOV_POLICY
+ │   ├── GOV_POLICY_ACTION
+ │   ├── GOV_POLICY_GOVERNABLE_STATE
+ │   ├── GOV_POLICY_LABEL
+ │   ├── GOV_POLICY_RULESET
+ │   ├── GOV_POLICY_RUN
+ │   ├── GOV_REQUEST
+ │   ├── GOV_REQUEST_POLICY
+ │   ├── GOV_RULE_VIOLATION
+ │   ├── GOV_RULESET
+ │   ├── GOV_RULESET_CONTENT
+ │   ├── GOV_RULESET_RULE
+ │   ├── GOV_RULESET_RUN
+ │   ├── IDN_APP_REVOKED_EVENT
+ │   ├── IDN_ASSOCIATED_ID
+ │   ├── IDN_AUTH_SESSION_APP_INFO
+ │   ├── IDN_AUTH_SESSION_META_DATA
+ │   ├── IDN_AUTH_SESSION_STORE
+ │   ├── IDN_AUTH_TEMP_SESSION_STORE
+ │   ├── IDN_AUTH_USER
+ │   ├── IDN_AUTH_USER_SESSION_MAPPING
+ │   ├── IDN_AUTH_WAIT_STATUS
+ │   ├── IDN_BASE_TABLE
+ │   ├── IDN_CERTIFICATE
+ │   ├── IDN_CLAIM
+ │   ├── IDN_CLAIM_DIALECT
+ │   ├── IDN_CLAIM_MAPPED_ATTRIBUTE
+ │   ├── IDN_CLAIM_MAPPING
+ │   ├── IDN_CLAIM_PROPERTY
+ │   ├── IDN_CONFIG_ATTRIBUTE
+ │   ├── IDN_CONFIG_FILE
+ │   ├── IDN_CONFIG_RESOURCE
+ │   ├── IDN_CONFIG_TYPE
+ │   ├── IDN_CORS_ASSOCIATION
+ │   ├── IDN_CORS_ORIGIN
+ │   ├── IDN_FED_AUTH_SESSION_MAPPING
+ │   ├── IDN_FUNCTION_LIBRARY
+ │   ├── IDN_IDENTITY_META_DATA
+ │   ├── IDN_IDENTITY_USER_DATA
+ │   ├── IDN_INVALID_TOKENS
+ │   ├── IDN_OAUTH1A_ACCESS_TOKEN
+ │   ├── IDN_OAUTH1A_REQUEST_TOKEN
+ │   ├── IDN_OAUTH2_ACCESS_TOKEN
+ │   ├── IDN_OAUTH2_ACCESS_TOKEN_AUDIT
+ │   ├── IDN_OAUTH2_ACCESS_TOKEN_SCOPE
+ │   ├── IDN_OAUTH2_AUTHORIZATION_CODE
+ │   ├── IDN_OAUTH2_AUTHZ_CODE_SCOPE
+ │   ├── IDN_OAUTH2_CIBA_AUTH_CODE
+ │   ├── IDN_OAUTH2_CIBA_REQUEST_SCOPES
+ │   ├── IDN_OAUTH2_DEVICE_FLOW
+ │   ├── IDN_OAUTH2_DEVICE_FLOW_SCOPES
+ │   ├── IDN_OAUTH2_RESOURCE_SCOPE
+ │   ├── IDN_OAUTH2_SCOPE
+ │   ├── IDN_OAUTH2_SCOPE_BINDING
+ │   ├── IDN_OAUTH2_SCOPE_VALIDATORS
+ │   ├── IDN_OAUTH2_TOKEN_BINDING
+ │   ├── IDN_OAUTH2_USER_CONSENT
+ │   ├── IDN_OAUTH2_USER_CONSENTED_SCOPES
+ │   ├── IDN_OAUTH_CONSUMER_APPS
+ │   ├── IDN_OIDC_JTI
+ │   ├── IDN_OIDC_PROPERTY
+ │   ├── IDN_OIDC_REQ_OBJ_CLAIM_VALUES
+ │   ├── IDN_OIDC_REQ_OBJECT_CLAIMS
+ │   ├── IDN_OIDC_REQ_OBJECT_REFERENCE
+ │   ├── IDN_OIDC_SCOPE_CLAIM_MAPPING
+ │   ├── IDN_OPENID_ASSOCIATIONS
+ │   ├── IDN_OPENID_REMEMBER_ME
+ │   ├── IDN_OPENID_USER_RPS
+ │   ├── IDN_PASSWORD_HISTORY_DATA
+ │   ├── IDN_RECOVERY_DATA
+ │   ├── IDN_REMOTE_FETCH_CONFIG
+ │   ├── IDN_REMOTE_FETCH_REVISIONS
+ │   ├── IDN_SAML2_ARTIFACT_STORE
+ │   ├── IDN_SAML2_ASSERTION_STORE
+ │   ├── IDN_SCIM_GROUP
+ │   ├── IDN_SECRET
+ │   ├── IDN_SECRET_TYPE
+ │   ├── IDN_STS_STORE
+ │   ├── IDN_SUBJECT_ENTITY_REVOKED_EVENT
+ │   ├── IDN_THRIFT_SESSION
+ │   ├── IDN_UMA_PERMISSION_TICKET
+ │   ├── IDN_UMA_PT_RESOURCE
+ │   ├── IDN_UMA_PT_RESOURCE_SCOPE
+ │   ├── IDN_UMA_RESOURCE
+ │   ├── IDN_UMA_RESOURCE_META_DATA
+ │   ├── IDN_UMA_RESOURCE_SCOPE
+ │   ├── IDN_USER_ACCOUNT_ASSOCIATION
+ │   ├── IDN_USER_FUNCTIONALITY_MAPPING
+ │   ├── IDN_USER_FUNCTIONALITY_PROPERTY
+ │   ├── IDP
+ │   ├── IDP_AUTHENTICATOR
+ │   ├── IDP_AUTHENTICATOR_PROPERTY
+ │   ├── IDP_CLAIM
+ │   ├── IDP_CLAIM_MAPPING
+ │   ├── IDP_LOCAL_CLAIM
+ │   ├── IDP_METADATA
+ │   ├── IDP_PROV_CONFIG_PROPERTY
+ │   ├── IDP_PROVISIONING_CONFIG
+ │   ├── IDP_PROVISIONING_ENTITY
+ │   ├── IDP_ROLE
+ │   ├── IDP_ROLE_MAPPING
+ │   ├── SP_APP
+ │   ├── SP_AUTH_SCRIPT
+ │   ├── SP_AUTH_STEP
+ │   ├── SP_CLAIM_DIALECT
+ │   ├── SP_CLAIM_MAPPING
+ │   ├── SP_FEDERATED_IDP
+ │   ├── SP_INBOUND_AUTH
+ │   ├── SP_METADATA
+ │   ├── SP_PROVISIONING_CONNECTOR
+ │   ├── SP_REQ_PATH_AUTHENTICATOR
+ │   ├── SP_ROLE_MAPPING
+ │   ├── SP_SHARED_APP
+ │   ├── SP_TEMPLATE
+ │   ├── WF_BPS_PROFILE
+ │   ├── WF_REQUEST
+ │   ├── WF_REQUEST_ENTITY_RELATIONSHIP
+ │   ├── WF_WORKFLOW
+ │   ├── WF_WORKFLOW_ASSOCIATION
+ │   ├── WF_WORKFLOW_CONFIG_PARAM
+ │   └── WF_WORKFLOW_REQUEST_RELATION
+ |
+
+═══════════════════════════════════════════════════════════
+Legend:
+  [-] Root summary
+  [X] Missing:  Exists in Reference but not in Target
+  [+] Extra:  Exists in Target but not in Reference
+  [M] Modified: Structural change detected
+  [! ] Warning: Requires attention
+  [C] Constraint mismatch
+  [I] Index mismatch
+═══════════════════════════════════════════════════════════
+
+EXIT_CODE=1
