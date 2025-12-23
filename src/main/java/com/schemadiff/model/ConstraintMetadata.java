@@ -59,6 +59,10 @@ public class ConstraintMetadata {
         return referencedTable;
     }
 
+    public void setReferencedTable(String referencedTable) {
+        this.referencedTable = referencedTable;
+    }
+
     public String getSignature() {
         return signature;
     }
