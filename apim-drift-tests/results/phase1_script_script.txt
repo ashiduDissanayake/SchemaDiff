@@ -1,0 +1,46 @@
+Mode: SCRIPT_VS_SCRIPT
+[main] INFO org.testcontainers.images.PullPolicy - Image pull policy will be performed by: DefaultPullPolicy()
+[main] INFO org.testcontainers.utility.ImageNameSubstitutor - Image name substitution will be performed by: DefaultImageNameSubstitutor (composite of 'ConfigurationFileImageNameSubstitutor' and 'PrefixingImageNameSubstitutor')
+[main] INFO org.testcontainers.dockerclient.DockerClientProviderStrategy - Loaded org.testcontainers.dockerclient.UnixSocketClientProviderStrategy from ~/.testcontainers.properties, will try it first
+[main] INFO org.testcontainers.dockerclient.DockerClientProviderStrategy - Found Docker environment with local Unix socket (unix:///var/run/docker.sock)
+[main] INFO org.testcontainers.DockerClientFactory - Docker host IP address is localhost
+[main] INFO org.testcontainers.DockerClientFactory - Connected to docker:
+  Server Version: 28.5.2
+  API Version: 1.51
+  Operating System: Ubuntu 24.04.3 LTS
+  Total Memory: 7959 MB
+[main] INFO tc.testcontainers/ryuk:0.5.1 - Creating container for image: testcontainers/ryuk:0.5.1
+[main] INFO org.testcontainers.utility.RegistryAuthLocator - Failure when attempting to lookup auth config. Please ignore if you don't have images in an authenticated registry. Details: (dockerImageName: testcontainers/ryuk:0.5.1, configFile: /root/.docker/config.json, configEnv: DOCKER_AUTH_CONFIG). Falling back to docker-java default behaviour. Exception message: Status 404: No config supplied. Checked in order: /root/.docker/config.json (file not found), DOCKER_AUTH_CONFIG (not set)
+[main] INFO tc.testcontainers/ryuk:0.5.1 - Container testcontainers/ryuk:0.5.1 is starting: 37dd4de482fa62216e811945bb09b4efb8c882bd0efce645172af1c352408ff6
+[main] INFO tc.testcontainers/ryuk:0.5.1 - Container testcontainers/ryuk:0.5.1 started in PT4.000012331S
+[main] INFO org.testcontainers.utility.RyukResourceReaper - Ryuk started - will monitor and terminate Testcontainers containers on JVM exit
+[main] INFO org.testcontainers.DockerClientFactory - Checking the system...
+[main] INFO org.testcontainers.DockerClientFactory - ✔︎ Docker server version should be at least 1.6.0
+[main] INFO tc.mysql:8.0 - Creating container for image: mysql:8.0
+[main] INFO tc.mysql:8.0 - Container mysql:8.0 is starting: 3752c0e2ecf1eae8af63360378cdd911c71f62a46d4e94fcc69f2632ee928847
+[main] INFO tc.mysql:8.0 - Waiting for database connection to become available at jdbc:mysql://localhost:32794/test using query 'SELECT 1'
+[main] INFO tc.mysql:8.0 - Container mysql:8.0 started in PT1M3.969168303S
+[main] INFO tc.mysql:8.0 - Container is started (JDBC URL: jdbc:mysql://localhost:32794/test)
+✓ Executed 334 SQL statements successfully
+[main] INFO com.schemadiff.core.extractors.MySQLExtractor - Starting MySQL schema extraction
+[main] INFO com.schemadiff.core.extractors.MySQLExtractor - MySQL version: 8.0
+[main] INFO com.schemadiff.core.extractors.MySQLExtractor - Extracting schema: test
+[main] INFO com.schemadiff.core.extractors.MySQLExtractor - Schema extraction completed successfully in 374ms - Tables: 240, Indexes: 258, Constraints: 500
+[main] INFO tc.mysql:8.0 - Creating container for image: mysql:8.0
+[main] INFO tc.mysql:8.0 - Container mysql:8.0 is starting: aa71c5c26a40c778d63928630b8eca23e7df6a576c7d08c0f60bba14c4445b99
+[main] INFO tc.mysql:8.0 - Waiting for database connection to become available at jdbc:mysql://localhost:32795/test using query 'SELECT 1'
+[main] INFO tc.mysql:8.0 - Container mysql:8.0 started in PT45.661294001S
+[main] INFO tc.mysql:8.0 - Container is started (JDBC URL: jdbc:mysql://localhost:32795/test)
+✓ Executed 334 SQL statements successfully
+[main] INFO com.schemadiff.core.extractors.MySQLExtractor - Starting MySQL schema extraction
+[main] INFO com.schemadiff.core.extractors.MySQLExtractor - MySQL version: 8.0
+[main] INFO com.schemadiff.core.extractors.MySQLExtractor - Extracting schema: test
+[main] INFO com.schemadiff.core.extractors.MySQLExtractor - Schema extraction completed successfully in 196ms - Tables: 240, Indexes: 258, Constraints: 500
+
+═══════════════════════════════════════════════════════════
+[-] SCHEMA SUMMARY:  0 Differences Found
+═══════════════════════════════════════════════════════════
+ |
+ └── ✓ No differences detected
+
+EXIT_CODE=0

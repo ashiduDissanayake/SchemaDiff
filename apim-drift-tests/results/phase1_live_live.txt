@@ -1,0 +1,17 @@
+Mode: LIVE_VS_LIVE
+[main] INFO com.schemadiff.core.extractors.MySQLExtractor - Starting MySQL schema extraction
+[main] INFO com.schemadiff.core.extractors.MySQLExtractor - MySQL version: 8.0
+[main] INFO com.schemadiff.core.extractors.MySQLExtractor - Extracting schema: test
+[main] INFO com.schemadiff.core.extractors.MySQLExtractor - Schema extraction completed successfully in 449ms - Tables: 240, Indexes: 258, Constraints: 500
+[main] INFO com.schemadiff.core.extractors.MySQLExtractor - Starting MySQL schema extraction
+[main] INFO com.schemadiff.core.extractors.MySQLExtractor - MySQL version: 8.0
+[main] INFO com.schemadiff.core.extractors.MySQLExtractor - Extracting schema: test
+[main] INFO com.schemadiff.core.extractors.MySQLExtractor - Schema extraction completed successfully in 210ms - Tables: 240, Indexes: 258, Constraints: 500
+
+═══════════════════════════════════════════════════════════
+[-] SCHEMA SUMMARY:  0 Differences Found
+═══════════════════════════════════════════════════════════
+ |
+ └── ✓ No differences detected
+
+EXIT_CODE=0

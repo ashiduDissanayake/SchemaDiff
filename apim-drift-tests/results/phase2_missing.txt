@@ -1,0 +1,195 @@
+Mode: SCRIPT_VS_SCRIPT
+[main] INFO org.testcontainers.images.PullPolicy - Image pull policy will be performed by: DefaultPullPolicy()
+[main] INFO org.testcontainers.utility.ImageNameSubstitutor - Image name substitution will be performed by: DefaultImageNameSubstitutor (composite of 'ConfigurationFileImageNameSubstitutor' and 'PrefixingImageNameSubstitutor')
+[main] INFO org.testcontainers.dockerclient.DockerClientProviderStrategy - Loaded org.testcontainers.dockerclient.UnixSocketClientProviderStrategy from ~/.testcontainers.properties, will try it first
+[main] INFO org.testcontainers.dockerclient.DockerClientProviderStrategy - Found Docker environment with local Unix socket (unix:///var/run/docker.sock)
+[main] INFO org.testcontainers.DockerClientFactory - Docker host IP address is localhost
+[main] INFO org.testcontainers.DockerClientFactory - Connected to docker:
+  Server Version: 28.5.2
+  API Version: 1.51
+  Operating System: Ubuntu 24.04.3 LTS
+  Total Memory: 7959 MB
+[main] INFO tc.testcontainers/ryuk:0.5.1 - Creating container for image: testcontainers/ryuk:0.5.1
+[main] INFO org.testcontainers.utility.RegistryAuthLocator - Failure when attempting to lookup auth config. Please ignore if you don't have images in an authenticated registry. Details: (dockerImageName: testcontainers/ryuk:0.5.1, configFile: /root/.docker/config.json, configEnv: DOCKER_AUTH_CONFIG). Falling back to docker-java default behaviour. Exception message: Status 404: No config supplied. Checked in order: /root/.docker/config.json (file not found), DOCKER_AUTH_CONFIG (not set)
+[main] INFO tc.testcontainers/ryuk:0.5.1 - Container testcontainers/ryuk:0.5.1 is starting: e334b8183cd1759bd1731bd8df8a360ade7cddc052e2a64ad31aa233e0a63fa2
+[main] INFO tc.testcontainers/ryuk:0.5.1 - Container testcontainers/ryuk:0.5.1 started in PT0.711858343S
+[main] INFO org.testcontainers.utility.RyukResourceReaper - Ryuk started - will monitor and terminate Testcontainers containers on JVM exit
+[main] INFO org.testcontainers.DockerClientFactory - Checking the system...
+[main] INFO org.testcontainers.DockerClientFactory - ✔︎ Docker server version should be at least 1.6.0
+[main] INFO tc.mysql:8.0 - Creating container for image: mysql:8.0
+[main] INFO tc.mysql:8.0 - Container mysql:8.0 is starting: a099d7c589e6a9c06f475bed517c2ad450a2bbcc49a7874282f9c79502e5c0f0
+[main] INFO tc.mysql:8.0 - Waiting for database connection to become available at jdbc:mysql://localhost:32799/test using query 'SELECT 1'
+[main] INFO tc.mysql:8.0 - Container mysql:8.0 started in PT18.457758586S
+[main] INFO tc.mysql:8.0 - Container is started (JDBC URL: jdbc:mysql://localhost:32799/test)
+✓ Executed 334 SQL statements successfully
+[main] INFO com.schemadiff.core.extractors.MySQLExtractor - Starting MySQL schema extraction
+[main] INFO com.schemadiff.core.extractors.MySQLExtractor - MySQL version: 8.0
+[main] INFO com.schemadiff.core.extractors.MySQLExtractor - Extracting schema: test
+[main] INFO com.schemadiff.core.extractors.MySQLExtractor - Schema extraction completed successfully in 278ms - Tables: 240, Indexes: 258, Constraints: 500
+[main] INFO tc.mysql:8.0 - Creating container for image: mysql:8.0
+[main] INFO tc.mysql:8.0 - Container mysql:8.0 is starting: 6142c17c719e9032570402c99dda6ceaa34676e9ba3d37db3a8050efbe1ae11e
+[main] INFO tc.mysql:8.0 - Waiting for database connection to become available at jdbc:mysql://localhost:32800/test using query 'SELECT 1'
+[main] INFO tc.mysql:8.0 - Container mysql:8.0 started in PT21.702648443S
+[main] INFO tc.mysql:8.0 - Container is started (JDBC URL: jdbc:mysql://localhost:32800/test)
+⚠️  Warning: Skipping failed statement #3: You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near 'ID INTEGER NOT NULL AUTO_INCREMENT,
+⚠️  Warning: Skipping failed statement #4: You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near ') ROW_FORMAT=DYNAMIC ENGINE=INNODB' at line 5
+⚠️  Warning: Skipping failed statement #5: You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near ') ROW_FORMAT=DYNAMIC ENGINE=INNODB' at line 12
+⚠️  Warning: Skipping failed statement #6: You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near ') ROW_FORMAT=DYNAMIC ENGINE=INNODB' at line 9
+⚠️  Warning: Skipping failed statement #7: You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near 'TOKEN_ID VARCHAR (255),
+⚠️  Warning: Skipping failed statement #8: You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near ') ROW_FORMAT=DYNAMIC ENGINE=INNODB' at line 8
+⚠️  Warning: Skipping failed statement #9: You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near 'ID INTEGER NOT NULL AUTO_INCREMENT,
+⚠️  Warning: Skipping failed statement #10: You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near 'CODE_ID VARCHAR (255),
+⚠️  Warning: Skipping failed statement #11: You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near ') ROW_FORMAT=DYNAMIC ENGINE=INNODB' at line 6
+⚠️  Warning: Skipping failed statement #12: You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near ') ROW_FORMAT=DYNAMIC ENGINE=INNODB' at line 19
+⚠️  Warning: Skipping failed statement #13: Failed to open the referenced table 'IDN_OAUTH2_DEVICE_FLOW'
+⚠️  Warning: Skipping failed statement #14: You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near 'TOKEN_ID VARCHAR (255),
+⚠️  Warning: Skipping failed statement #88: You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near ') ROW_FORMAT=DYNAMIC ENGINE=INNODB' at line 8
+⚠️  Warning: Skipping failed statement #89: You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near ') ROW_FORMAT=DYNAMIC ENGINE=INNODB' at line 8
+⚠️  Warning: Skipping failed statement #90: Failed to open the referenced table 'IDN_OIDC_REQ_OBJECT_REFERENCE'
+⚠️  Warning: Skipping failed statement #91: Failed to open the referenced table 'IDN_OIDC_REQ_OBJECT_CLAIMS'
+⚠️  Warning: Skipping failed statement #95: You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near ') ROW_FORMAT=DYNAMIC ENGINE=INNODB' at line 16
+⚠️  Warning: Skipping failed statement #96: Failed to open the referenced table 'IDN_OAUTH2_CIBA_AUTH_CODE'
+⚠️  Warning: Skipping failed statement #130: Table 'test.IDN_OIDC_REQ_OBJECT_REFERENCE' doesn't exist
+⚠️  Warning: Skipping failed statement #138: Table 'test.IDN_OIDC_PROPERTY' doesn't exist
+⚠️  Warning: Skipping failed statement #141: Table 'test.IDN_OAUTH2_TOKEN_BINDING' doesn't exist
+⚠️  Warning: Skipping failed statement #142: Table 'test.IDN_OAUTH2_TOKEN_BINDING' doesn't exist
+⚠️  Warning: Skipping failed statement #169: You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near 'API_ID INTEGER AUTO_INCREMENT,
+⚠️  Warning: Skipping failed statement #170: You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near 'API_UUID        VARCHAR(256) NOT NULL,
+⚠️  Warning: Skipping failed statement #171: You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near 'API_UUID VARCHAR(256) NOT NULL,
+⚠️  Warning: Skipping failed statement #173: You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near 'MAPPING_ID INTEGER NOT NULL AUTO_INCREMENT,
+⚠️  Warning: Skipping failed statement #174: You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near 'ID VARCHAR(60) NOT NULL,
+⚠️  Warning: Skipping failed statement #176: You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near 'URL_MAPPING_ID INTEGER AUTO_INCREMENT,
+⚠️  Warning: Skipping failed statement #177: You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near 'FOREIGN KEY (BACKEND_ID)
+⚠️  Warning: Skipping failed statement #178: You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near 'MAPPING_ID          INTEGER AUTO_INCREMENT,
+⚠️  Warning: Skipping failed statement #179: You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near 'SCOPE_NAME VARCHAR(255) NOT NULL,
+⚠️  Warning: Skipping failed statement #181: You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near 'API_PRODUCT_MAPPING_ID INTEGER AUTO_INCREMENT,
+⚠️  Warning: Skipping failed statement #184: You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near 'EVENT_ID INTEGER AUTO_INCREMENT,
+⚠️  Warning: Skipping failed statement #186: You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near 'COMMENT_ID VARCHAR(64) NOT NULL,
+⚠️  Warning: Skipping failed statement #187: You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near 'RATING_ID VARCHAR(255) NOT NULL,
+⚠️  Warning: Skipping failed statement #193: You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near 'DEFAULT_VERSION_ID INT AUTO_INCREMENT,
+⚠️  Warning: Skipping failed statement #210: You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near 'POLICY_ID INT(11) NOT NULL AUTO_INCREMENT,
+⚠️  Warning: Skipping failed statement #211: You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near ') ROW_FORMAT=DYNAMIC ENGINE=INNODB' at line 11
+⚠️  Warning: Skipping failed statement #212: Failed to open the referenced table 'AM_CONDITION_GROUP'
+⚠️  Warning: Skipping failed statement #213: Failed to open the referenced table 'AM_CONDITION_GROUP'
+⚠️  Warning: Skipping failed statement #214: Failed to open the referenced table 'AM_CONDITION_GROUP'
+⚠️  Warning: Skipping failed statement #215: Failed to open the referenced table 'AM_CONDITION_GROUP'
+⚠️  Warning: Skipping failed statement #221: You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near '`TENANT_ID` INT(11) NOT NULL,
+⚠️  Warning: Skipping failed statement #224: You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near 'ID INTEGER(11) NOT NULL AUTO_INCREMENT,
+⚠️  Warning: Skipping failed statement #229: You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near 'UUID VARCHAR(50),
+⚠️  Warning: Skipping failed statement #253: You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near 'ID INTEGER NOT NULL,
+⚠️  Warning: Skipping failed statement #254: You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near 'API_UUID VARCHAR(64),
+⚠️  Warning: Skipping failed statement #255: You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near ') ROW_FORMAT=DYNAMIC ENGINE=INNODB' at line 9
+⚠️  Warning: Skipping failed statement #256: You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near ') ROW_FORMAT=DYNAMIC ENGINE=INNODB' at line 7
+⚠️  Warning: Skipping failed statement #261: You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near 'API_ID VARCHAR(255) NOT NULL,
+⚠️  Warning: Skipping failed statement #262: You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near 'API_ID INTEGER NOT NULL,
+⚠️  Warning: Skipping failed statement #265: You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near 'UUID            VARCHAR(45)  NOT NULL,
+⚠️  Warning: Skipping failed statement #269: You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near 'API_SPECIFIC_POLICY_ID INTEGER AUTO_INCREMENT,
+⚠️  Warning: Skipping failed statement #270: You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near 'OPERATION_POLICY_MAPPING_ID INTEGER AUTO_INCREMENT,
+⚠️  Warning: Skipping failed statement #271: You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near 'API_POLICY_MAPPING_ID INTEGER AUTO_INCREMENT,
+⚠️  Warning: Skipping failed statement #282: You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near 'AI_CONFIGURATION_UUID      VARCHAR(255)    NOT NULL,
+⚠️  Warning: Skipping failed statement #284: You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near 'API_UUID       VARCHAR(256)     NOT NULL,
+⚠️  Warning: Skipping failed statement #305: You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near ')  ROW_FORMAT=DYNAMIC ENGINE=INNODB' at line 11
+⚠️  Warning: Skipping failed statement #309: Table 'test.AM_CONDITION_GROUP' doesn't exist
+⚠️  Warning: Skipping failed statement #315: Table 'test.AM_GW_REVISION_DEPLOYMENT' doesn't exist
+✓ Executed 255 SQL statements successfully (60 errors skipped)
+
+⚠️  Note: 60 statement(s) failed but were skipped:
+  - Statement #3: You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near 'ID INTEGER NOT NULL AUTO_INCREMENT,
+  - Statement #4: You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near ') ROW_FORMAT=DYNAMIC ENGINE=INNODB' at line 5
+  - Statement #5: You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near ') ROW_FORMAT=DYNAMIC ENGINE=INNODB' at line 12
+  ... and 57 more errors
+[main] INFO com.schemadiff.core.extractors.MySQLExtractor - Starting MySQL schema extraction
+[main] INFO com.schemadiff.core.extractors.MySQLExtractor - MySQL version: 8.0
+[main] INFO com.schemadiff.core.extractors.MySQLExtractor - Extracting schema: test
+[main] INFO com.schemadiff.core.extractors.MySQLExtractor - Schema extraction completed successfully in 152ms - Tables: 186, Indexes: 174, Constraints: 371
+
+═══════════════════════════════════════════════════════════
+[-] SCHEMA SUMMARY:  61 Differences Found
+═══════════════════════════════════════════════════════════
+ |
+ ├── [X] MISSING TABLES (54)
+ │   ├── AM_API
+ │   ├── AM_API_AI_CONFIGURATION
+ │   ├── AM_API_CATEGORIES
+ │   ├── AM_API_CLIENT_CERTIFICATE
+ │   ├── AM_API_COMMENTS
+ │   ├── AM_API_DEFAULT_VERSION
+ │   ├── AM_API_ENDPOINTS
+ │   ├── AM_API_ENVIRONMENT_KEYS
+ │   ├── AM_API_EXTERNAL_API_MAPPING
+ │   ├── AM_API_LABEL_MAPPING
+ │   ├── AM_API_LC_EVENT
+ │   ├── AM_API_LC_PUBLISH_EVENTS
+ │   ├── AM_API_METADATA
+ │   ├── AM_API_OPERATION_MAPPING
+ │   ├── AM_API_OPERATION_POLICY
+ │   ├── AM_API_OPERATION_POLICY_MAPPING
+ │   ├── AM_API_POLICY_MAPPING
+ │   ├── AM_API_PRIMARY_EP_MAPPING
+ │   ├── AM_API_PRODUCT_MAPPING
+ │   ├── AM_API_RATINGS
+ │   ├── AM_API_RESOURCE_SCOPE_MAPPING
+ │   ├── AM_API_REVISION_METADATA
+ │   ├── AM_API_SEQUENCE_BACKEND
+ │   ├── AM_API_SERVICE_MAPPING
+ │   ├── AM_API_THROTTLE_POLICY
+ │   ├── AM_API_URL_MAPPING
+ │   ├── AM_BACKEND_OPERATION_MAPPING
+ │   ├── AM_CONDITION_GROUP
+ │   ├── AM_DEPLOYED_REVISION
+ │   ├── AM_DEPLOYMENT_REVISION_MAPPING
+ │   ├── AM_GW_REVISION_DEPLOYMENT
+ │   ├── AM_HEADER_FIELD_CONDITION
+ │   ├── AM_IP_CONDITION
+ │   ├── AM_JWT_CLAIM_CONDITION
+ │   ├── AM_QUERY_PARAMETER_CONDITION
+ │   ├── AM_REVISION
+ │   ├── IDN_OAUTH1A_ACCESS_TOKEN
+ │   ├── IDN_OAUTH1A_REQUEST_TOKEN
+ │   ├── IDN_OAUTH2_ACCESS_TOKEN
+ │   ├── IDN_OAUTH2_ACCESS_TOKEN_AUDIT
+ │   ├── IDN_OAUTH2_ACCESS_TOKEN_SCOPE
+ │   ├── IDN_OAUTH2_AUTHORIZATION_CODE
+ │   ├── IDN_OAUTH2_AUTHZ_CODE_SCOPE
+ │   ├── IDN_OAUTH2_CIBA_AUTH_CODE
+ │   ├── IDN_OAUTH2_CIBA_REQUEST_SCOPES
+ │   ├── IDN_OAUTH2_DEVICE_FLOW
+ │   ├── IDN_OAUTH2_DEVICE_FLOW_SCOPES
+ │   ├── IDN_OAUTH2_SCOPE_VALIDATORS
+ │   ├── IDN_OAUTH2_TOKEN_BINDING
+ │   ├── IDN_OAUTH_CONSUMER_APPS
+ │   ├── IDN_OIDC_PROPERTY
+ │   ├── IDN_OIDC_REQ_OBJ_CLAIM_VALUES
+ │   ├── IDN_OIDC_REQ_OBJECT_CLAIMS
+ │   └── IDN_OIDC_REQ_OBJECT_REFERENCE
+ |
+ ├── [C] CONSTRAINT DIFFERENCES
+ │   ├── [!] Table: AM_BACKEND
+ │      └── [X] Missing Constraint: FOREIGN_KEY
+ │   ├── [!] Table: AM_EXTERNAL_STORES
+ │      └── [X] Missing Constraint: FOREIGN_KEY
+ │   ├── [!] Table: AM_GRAPHQL_COMPLEXITY
+ │      └── [X] Missing Constraint: FOREIGN_KEY
+ │   ├── [!] Table: AM_SECURITY_AUDIT_UUID_MAPPING
+ │      └── [X] Missing Constraint: FOREIGN_KEY
+ │   └── [!] Table: AM_SUBSCRIPTION
+        └── [X] Missing Constraint: FOREIGN_KEY
+ |
+ └── [I] INDEX DIFFERENCES
+     ├── [!] Table: AM_EXTERNAL_STORES
+        └── [X] Missing Index on: API_ID
+     └── [!] Table: AM_GRAPHQL_COMPLEXITY
+        └── [X] Missing Index on: API_ID
+
+═══════════════════════════════════════════════════════════
+Legend:
+  [-] Root summary
+  [X] Missing:  Exists in Reference but not in Target
+  [+] Extra:  Exists in Target but not in Reference
+  [M] Modified: Structural change detected
+  [! ] Warning: Requires attention
+  [C] Constraint mismatch
+  [I] Index mismatch
+═══════════════════════════════════════════════════════════
+
+EXIT_CODE=1

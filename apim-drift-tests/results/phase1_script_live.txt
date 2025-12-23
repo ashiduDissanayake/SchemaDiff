@@ -1,0 +1,40 @@
+Mode: SCRIPT_VS_LIVE
+[main] INFO org.testcontainers.images.PullPolicy - Image pull policy will be performed by: DefaultPullPolicy()
+[main] INFO org.testcontainers.utility.ImageNameSubstitutor - Image name substitution will be performed by: DefaultImageNameSubstitutor (composite of 'ConfigurationFileImageNameSubstitutor' and 'PrefixingImageNameSubstitutor')
+[main] INFO org.testcontainers.dockerclient.DockerClientProviderStrategy - Loaded org.testcontainers.dockerclient.UnixSocketClientProviderStrategy from ~/.testcontainers.properties, will try it first
+[main] INFO org.testcontainers.dockerclient.DockerClientProviderStrategy - Found Docker environment with local Unix socket (unix:///var/run/docker.sock)
+[main] INFO org.testcontainers.DockerClientFactory - Docker host IP address is localhost
+[main] INFO org.testcontainers.DockerClientFactory - Connected to docker:
+  Server Version: 28.5.2
+  API Version: 1.51
+  Operating System: Ubuntu 24.04.3 LTS
+  Total Memory: 7959 MB
+[main] INFO tc.testcontainers/ryuk:0.5.1 - Creating container for image: testcontainers/ryuk:0.5.1
+[main] INFO org.testcontainers.utility.RegistryAuthLocator - Failure when attempting to lookup auth config. Please ignore if you don't have images in an authenticated registry. Details: (dockerImageName: testcontainers/ryuk:0.5.1, configFile: /root/.docker/config.json, configEnv: DOCKER_AUTH_CONFIG). Falling back to docker-java default behaviour. Exception message: Status 404: No config supplied. Checked in order: /root/.docker/config.json (file not found), DOCKER_AUTH_CONFIG (not set)
+[main] INFO tc.testcontainers/ryuk:0.5.1 - Container testcontainers/ryuk:0.5.1 is starting: dfede5f52da2be9a8ab923d3cb1794b67b2d8aa873724a9c7fa7be541da9621a
+[main] INFO tc.testcontainers/ryuk:0.5.1 - Container testcontainers/ryuk:0.5.1 started in PT1.304178707S
+[main] INFO org.testcontainers.utility.RyukResourceReaper - Ryuk started - will monitor and terminate Testcontainers containers on JVM exit
+[main] INFO org.testcontainers.DockerClientFactory - Checking the system...
+[main] INFO org.testcontainers.DockerClientFactory - ✔︎ Docker server version should be at least 1.6.0
+[main] INFO tc.mysql:8.0 - Creating container for image: mysql:8.0
+[main] INFO tc.mysql:8.0 - Container mysql:8.0 is starting: d1122f43ca96d71e2a78c07985d59d0fb074e3a683b416ad41e2efeebcca36ef
+[main] INFO tc.mysql:8.0 - Waiting for database connection to become available at jdbc:mysql://localhost:32797/test using query 'SELECT 1'
+[main] INFO tc.mysql:8.0 - Container mysql:8.0 started in PT29.736651114S
+[main] INFO tc.mysql:8.0 - Container is started (JDBC URL: jdbc:mysql://localhost:32797/test)
+✓ Executed 334 SQL statements successfully
+[main] INFO com.schemadiff.core.extractors.MySQLExtractor - Starting MySQL schema extraction
+[main] INFO com.schemadiff.core.extractors.MySQLExtractor - MySQL version: 8.0
+[main] INFO com.schemadiff.core.extractors.MySQLExtractor - Extracting schema: test
+[main] INFO com.schemadiff.core.extractors.MySQLExtractor - Schema extraction completed successfully in 253ms - Tables: 240, Indexes: 258, Constraints: 500
+[main] INFO com.schemadiff.core.extractors.MySQLExtractor - Starting MySQL schema extraction
+[main] INFO com.schemadiff.core.extractors.MySQLExtractor - MySQL version: 8.0
+[main] INFO com.schemadiff.core.extractors.MySQLExtractor - Extracting schema: test
+[main] INFO com.schemadiff.core.extractors.MySQLExtractor - Schema extraction completed successfully in 152ms - Tables: 240, Indexes: 258, Constraints: 500
+
+═══════════════════════════════════════════════════════════
+[-] SCHEMA SUMMARY:  0 Differences Found
+═══════════════════════════════════════════════════════════
+ |
+ └── ✓ No differences detected
+
+EXIT_CODE=0
