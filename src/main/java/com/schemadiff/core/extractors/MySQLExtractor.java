@@ -884,7 +884,8 @@ public class MySQLExtractor extends MetadataExtractor {
             );
             fk.setReferencedTable(refTableName);
             fk.setReferencedColumns(refColumns);
-            // Map rules roughly - normally would use enums
+            fk.setUpdateRule(updateRule);
+            fk.setDeleteRule(deleteRule);
             return fk;
         }
     }
