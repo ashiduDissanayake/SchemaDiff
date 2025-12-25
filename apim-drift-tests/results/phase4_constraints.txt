@@ -1,52 +1,30 @@
 Mode: SCRIPT_VS_SCRIPT
-[main] INFO org.testcontainers.images.PullPolicy - Image pull policy will be performed by: DefaultPullPolicy()
-[main] INFO org.testcontainers.utility.ImageNameSubstitutor - Image name substitution will be performed by: DefaultImageNameSubstitutor (composite of 'ConfigurationFileImageNameSubstitutor' and 'PrefixingImageNameSubstitutor')
-[main] INFO org.testcontainers.dockerclient.DockerClientProviderStrategy - Loaded org.testcontainers.dockerclient.UnixSocketClientProviderStrategy from ~/.testcontainers.properties, will try it first
-[main] INFO org.testcontainers.dockerclient.DockerClientProviderStrategy - Found Docker environment with local Unix socket (unix:///var/run/docker.sock)
-[main] INFO org.testcontainers.DockerClientFactory - Docker host IP address is localhost
-[main] INFO org.testcontainers.DockerClientFactory - Connected to docker:
-  Server Version: 28.5.2
-  API Version: 1.51
-  Operating System: Ubuntu 24.04.3 LTS
-  Total Memory: 7959 MB
-[main] INFO tc.testcontainers/ryuk:0.5.1 - Creating container for image: testcontainers/ryuk:0.5.1
-[main] INFO org.testcontainers.utility.RegistryAuthLocator - Failure when attempting to lookup auth config. Please ignore if you don't have images in an authenticated registry. Details: (dockerImageName: testcontainers/ryuk:0.5.1, configFile: /root/.docker/config.json, configEnv: DOCKER_AUTH_CONFIG). Falling back to docker-java default behaviour. Exception message: Status 404: No config supplied. Checked in order: /root/.docker/config.json (file not found), DOCKER_AUTH_CONFIG (not set)
-[main] INFO tc.testcontainers/ryuk:0.5.1 - Container testcontainers/ryuk:0.5.1 is starting: d4227e15329c8eaad89213b6310797742f13a0a589a59cc28a763ed670a51579
-[main] INFO tc.testcontainers/ryuk:0.5.1 - Container testcontainers/ryuk:0.5.1 started in PT0.628029179S
-[main] INFO org.testcontainers.utility.RyukResourceReaper - Ryuk started - will monitor and terminate Testcontainers containers on JVM exit
-[main] INFO org.testcontainers.DockerClientFactory - Checking the system...
-[main] INFO org.testcontainers.DockerClientFactory - ✔︎ Docker server version should be at least 1.6.0
-[main] INFO tc.mysql:8.0 - Creating container for image: mysql:8.0
-[main] INFO tc.mysql:8.0 - Container mysql:8.0 is starting: 93bb1257eb950d23929e7eaade54da523e3686317c30ee91b1b87ee695f1fb01
-[main] INFO tc.mysql:8.0 - Waiting for database connection to become available at jdbc:mysql://localhost:32774/test using query 'SELECT 1'
-[main] INFO tc.mysql:8.0 - Container mysql:8.0 started in PT17.069054179S
-[main] INFO tc.mysql:8.0 - Container is started (JDBC URL: jdbc:mysql://localhost:32774/test)
 ✓ Executed 334 SQL statements successfully
-[main] INFO com.schemadiff.core.extractors.MySQLExtractor - Starting MySQL schema extraction
-[main] INFO com.schemadiff.core.extractors.MySQLExtractor - MySQL version: 8.0
-[main] INFO com.schemadiff.core.extractors.MySQLExtractor - Extracting schema: test
-[main] INFO com.schemadiff.core.extractors.MySQLExtractor - Schema extraction completed successfully in 267ms - Tables: 240, Indexes: 258, Constraints: 500
-[main] INFO tc.mysql:8.0 - Creating container for image: mysql:8.0
-[main] INFO tc.mysql:8.0 - Container mysql:8.0 is starting: 52ee449477edae662ae1792850656d4a31edad55b614481ea98b284f2f8a62fd
-[main] INFO tc.mysql:8.0 - Waiting for database connection to become available at jdbc:mysql://localhost:32775/test using query 'SELECT 1'
-[main] INFO tc.mysql:8.0 - Container mysql:8.0 started in PT20.54531098S
-[main] INFO tc.mysql:8.0 - Container is started (JDBC URL: jdbc:mysql://localhost:32775/test)
-✓ Executed 334 SQL statements successfully
-[main] INFO com.schemadiff.core.extractors.MySQLExtractor - Starting MySQL schema extraction
-[main] INFO com.schemadiff.core.extractors.MySQLExtractor - MySQL version: 8.0
-[main] INFO com.schemadiff.core.extractors.MySQLExtractor - Extracting schema: test
-[main] INFO com.schemadiff.core.extractors.MySQLExtractor - Schema extraction completed successfully in 225ms - Tables: 240, Indexes: 258, Constraints: 498
+✓ Executed 329 SQL statements successfully (5 errors skipped)
+
+⚠️  Note: 5 statement(s) failed but were skipped:
+  - Statement #4: You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near ') ROW_FORMAT=DYNAMIC ENGINE=INNODB' at line 5
+  - Statement #88: Failed to add the foreign key constraint. Missing index for constraint 'IDN_OIDC_PROPERTY_ibfk_1' in the referenced table 'IDN_OAUTH_CONSUMER_APPS'
+  - Statement #95: Failed to add the foreign key constraint. Missing index for constraint 'IDN_OAUTH2_CIBA_AUTH_CODE_ibfk_1' in the referenced table 'IDN_OAUTH_CONSUMER_APPS'
+  ... and 2 more errors
 
 ═══════════════════════════════════════════════════════════
-[-] SCHEMA SUMMARY:  2 Differences Found
+[-] SCHEMA SUMMARY:  6 Differences Found
 ═══════════════════════════════════════════════════════════
  |
- ├── [C] CONSTRAINT DIFFERENCES
- │   ├── [!] Table: IDN_BASE_TABLE
- │      └── [X] Missing Constraint: PRIMARY_KEY
- │   └── [!] Table: IDN_OAUTH2_ACCESS_TOKEN_SCOPE
-        └── [X] Missing Constraint: FOREIGN_KEY
+ ├── [X] MISSING TABLES (4)
+ │   ├── IDN_OAUTH2_CIBA_AUTH_CODE
+ │   ├── IDN_OAUTH2_CIBA_REQUEST_SCOPES
+ │   ├── IDN_OAUTH2_SCOPE_VALIDATORS
+ │   └── IDN_OIDC_PROPERTY
  |
+ ├── [C] CONSTRAINT DIFFERENCES
+ │   └── [!] Table: IDN_OAUTH_CONSUMER_APPS
+        └── [X] Missing Constraint: UNIQUE
+ |
+ └── [I] INDEX DIFFERENCES
+     └── [!] Table: IDN_OAUTH_CONSUMER_APPS
+        └── [X] Missing Index on: CONSUMER_KEY
 
 ═══════════════════════════════════════════════════════════
 Legend:
@@ -59,4 +37,3 @@ Legend:
   [I] Index mismatch
 ═══════════════════════════════════════════════════════════
 
-EXIT_CODE=1
