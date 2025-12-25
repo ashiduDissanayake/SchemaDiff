@@ -53,9 +53,36 @@ public class ComparisonEngine {
 
                 if (targetCol == null) {
                     result.addMissingColumn(tableName, refCol.getName(), refCol.getDataType());
-                } else if (! TypeNormalizer.typesMatch(refCol.getDataType(), targetCol.getDataType())) {
-                    result. addModifiedColumn(tableName, refCol.getName(),
-                        "Type mismatch: " + refCol.getDataType() + " != " + targetCol.getDataType());
+                } else {
+                    List<String> diffs = new ArrayList<>();
+
+                    if (!TypeNormalizer.typesMatch(refCol.getDataType(), targetCol.getDataType())) {
+                        diffs.add("Type mismatch: " + refCol.getDataType() + " != " + targetCol.getDataType());
+                    }
+
+                    if (refCol.isNotNull() != targetCol.isNotNull()) {
+                        diffs.add("Nullable mismatch: " + !refCol.isNotNull() + " != " + !targetCol.isNotNull());
+                    }
+
+                    if (refCol.isAutoIncrement() != targetCol.isAutoIncrement()) {
+                        diffs.add("AutoIncrement mismatch: " + refCol.isAutoIncrement() + " != " + targetCol.isAutoIncrement());
+                    }
+
+                    if (refCol.isUnsigned() != targetCol.isUnsigned()) {
+                        diffs.add("Unsigned mismatch: " + refCol.isUnsigned() + " != " + targetCol.isUnsigned());
+                    }
+
+                    // Simple default value comparison
+                    String def1 = refCol.getDefaultValue();
+                    String def2 = targetCol.getDefaultValue();
+                    if (!Objects.equals(def1, def2)) {
+                        // Handle potential null vs "NULL" string discrepancies if necessary, but strict for now
+                        diffs.add("Default value mismatch: " + def1 + " != " + def2);
+                    }
+
+                    if (!diffs.isEmpty()) {
+                        result.addModifiedColumn(tableName, refCol.getName(), String.join(", ", diffs));
+                    }
                 }
             }
 
