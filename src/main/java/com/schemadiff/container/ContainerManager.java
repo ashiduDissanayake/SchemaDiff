@@ -1,10 +1,10 @@
 package com.schemadiff.container;
 
 import com.schemadiff.model.DatabaseType;
+import com.schemadiff.util.JDBCHelper;
 import org.testcontainers.containers.*;
 
 import java.sql.Connection;
-import java.sql.DriverManager;
 
 public class ContainerManager {
     private GenericContainer<?> container;
@@ -52,6 +52,6 @@ public class ContainerManager {
     }
 
     public Connection getConnection() throws Exception {
-        return DriverManager.getConnection(jdbcUrl, username, password);
+        return JDBCHelper.connect(jdbcUrl, username, password);
     }
 }

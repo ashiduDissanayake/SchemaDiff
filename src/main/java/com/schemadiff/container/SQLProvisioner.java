@@ -25,8 +25,8 @@ public class SQLProvisioner {
         // Preprocess SQL for MySQL compatibility: add ROW_FORMAT=DYNAMIC to tables
         sql = preprocessMySQLSchema(sql);
 
-        // Split by semicolon and process each statement
-        String[] statements = sql.split(";");
+        // Parse SQL into statements (PostgreSQL-aware)
+        List<String> statements = parseStatements(sql);
 
         List<String> errors = new ArrayList<>();
         try (Statement stmt = connection.createStatement()) {
@@ -43,17 +43,10 @@ public class SQLProvisioner {
             int errorCount = 0;
 
             for (String statement : statements) {
-                // Remove comments first
-                String cleaned = removeSingleLineComments(statement);
-                String trimmed = cleaned.trim();
+                String trimmed = statement.trim();
 
-                // Skip if empty after comment removal
+                // Skip if empty
                 if (trimmed.isEmpty()) {
-                    continue;
-                }
-
-                // Skip block comments
-                if (trimmed.startsWith("/*")) {
                     continue;
                 }
 
@@ -93,6 +86,136 @@ public class SQLProvisioner {
         }
     }
 
+    /**
+     * Parse SQL into individual statements, handling:
+     * - Dollar quotes ($$...$$) in PostgreSQL functions
+     * - Single quotes ('...')
+     * - Double quotes ("...")
+     * - Single-line comments (--)
+     * - Multi-line comments (/*...*\/)
+     */
+    private List<String> parseStatements(String sql) {
+        List<String> statements = new ArrayList<>();
+        StringBuilder current = new StringBuilder();
+
+        int i = 0;
+        int length = sql.length();
+
+        while (i < length) {
+            char c = sql.charAt(i);
+
+            // Handle single-line comments
+            if (c == '-' && i + 1 < length && sql.charAt(i + 1) == '-') {
+                // Skip until end of line
+                while (i < length && sql.charAt(i) != '\n') {
+                    i++;
+                }
+                i++;
+                continue;
+            }
+
+            // Handle multi-line comments
+            if (c == '/' && i + 1 < length && sql.charAt(i + 1) == '*') {
+                i += 2;
+                while (i + 1 < length) {
+                    if (sql.charAt(i) == '*' && sql.charAt(i + 1) == '/') {
+                        i += 2;
+                        break;
+                    }
+                    i++;
+                }
+                continue;
+            }
+
+            // Handle dollar quotes (PostgreSQL)
+            if (c == '$') {
+                int endTag = i + 1;
+                while (endTag < length && sql.charAt(endTag) != '$') {
+                    endTag++;
+                }
+                if (endTag < length) {
+                    String tag = sql.substring(i, endTag + 1); // e.g., $$
+                    current.append(tag);
+                    i = endTag + 1;
+
+                    // Find closing tag
+                    while (i < length) {
+                        if (sql.startsWith(tag, i)) {
+                            current.append(tag);
+                            i += tag.length();
+                            break;
+                        }
+                        current.append(sql.charAt(i));
+                        i++;
+                    }
+                    continue;
+                }
+            }
+
+            // Handle single-quoted strings
+            if (c == '\'') {
+                current.append(c);
+                i++;
+                while (i < length) {
+                    char ch = sql.charAt(i);
+                    current.append(ch);
+                    if (ch == '\'') {
+                        // Check for escaped quote ''
+                        if (i + 1 < length && sql.charAt(i + 1) == '\'') {
+                            current.append('\'');
+                            i += 2;
+                        } else {
+                            i++;
+                            break;
+                        }
+                    } else {
+                        i++;
+                    }
+                }
+                continue;
+            }
+
+            // Handle double-quoted identifiers
+            if (c == '"') {
+                current.append(c);
+                i++;
+                while (i < length) {
+                    char ch = sql.charAt(i);
+                    current.append(ch);
+                    if (ch == '"') {
+                        i++;
+                        break;
+                    }
+                    i++;
+                }
+                continue;
+            }
+
+            // Handle statement separator
+            if (c == ';') {
+                String stmt = current.toString().trim();
+                if (!stmt.isEmpty()) {
+                    statements.add(stmt);
+                }
+                current.setLength(0);
+                i++;
+                continue;
+            }
+
+            // Regular character
+            current.append(c);
+            i++;
+        }
+
+        // Add remaining statement
+        String stmt = current.toString().trim();
+        if (!stmt.isEmpty()) {
+            statements.add(stmt);
+        }
+
+        return statements;
+    }
+
     private String preprocessMySQLSchema(String sql) {
         // Add ROW_FORMAT=DYNAMIC to CREATE TABLE statements that don't have it
         // This allows larger index keys in MySQL 8.0
@@ -100,23 +223,5 @@ public class SQLProvisioner {
             "(?i)(CREATE\\s+TABLE[^;]+)ENGINE\\s*=?\\s*INNODB",
             "$1 ROW_FORMAT=DYNAMIC ENGINE=INNODB"
         );
-    }
-
-    private String removeSingleLineComments(String sql) {
-        StringBuilder result = new StringBuilder();
-        String[] lines = sql.split("\n");
-        for (String line : lines) {
-            int commentIndex = line.indexOf("--");
-            if (commentIndex >= 0) {
-                // Keep the part before the comment
-                String beforeComment = line.substring(0, commentIndex).trim();
-                if (!beforeComment.isEmpty()) {
-                    result.append(beforeComment).append("\n");
-                }
-            } else {
-                result.append(line).append("\n");
-            }
-        }
-        return result.toString();
     }
 }

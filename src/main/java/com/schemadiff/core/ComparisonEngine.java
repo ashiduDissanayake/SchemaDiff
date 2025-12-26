@@ -101,12 +101,35 @@ public class ComparisonEngine {
 
             if (targetTable == null) continue;
 
-            Map<String, ConstraintMetadata> refConstraints = buildSignatureMap(refTable. getConstraints());
+            // Build maps by signature for missing/extra detection
+            Map<String, ConstraintMetadata> refConstraints = buildSignatureMap(refTable.getConstraints());
             Map<String, ConstraintMetadata> targetConstraints = buildSignatureMap(targetTable.getConstraints());
 
+            // Find missing constraints (by signature)
             for (String signature : refConstraints.keySet()) {
                 if (!targetConstraints.containsKey(signature)) {
-                    result.addMissingConstraint(tableName, refConstraints.get(signature).getType());
+                    ConstraintMetadata refConstraint = refConstraints.get(signature);
+                    result.addMissingConstraintDetailed(tableName, refConstraint);
+                }
+            }
+
+            // Find extra constraints (by signature)
+            for (String signature : targetConstraints.keySet()) {
+                if (!refConstraints.containsKey(signature)) {
+                    ConstraintMetadata targetConstraint = targetConstraints.get(signature);
+                    result.addExtraConstraintDetailed(tableName, targetConstraint);
+                }
+            }
+
+            // Check for modified constraints (same name but different signature)
+            for (ConstraintMetadata refConstraint : refTable.getConstraints()) {
+                ConstraintMetadata targetConstraint = targetTable.getConstraint(refConstraint.getName());
+
+                if (targetConstraint != null) {
+                    // Both exist with same name - check if signature differs
+                    if (!refConstraint.getSignature().equals(targetConstraint.getSignature())) {
+                        result.addModifiedConstraintDetailed(tableName, refConstraint, targetConstraint);
+                    }
                 }
             }
         }
@@ -119,15 +142,59 @@ public class ComparisonEngine {
 
             if (targetTable == null) continue;
 
-            Set<String> refIndexSigs = buildIndexSignatures(refTable.getIndexes());
-            Set<String> targetIndexSigs = buildIndexSignatures(targetTable.getIndexes());
+            // Build maps by name for proper comparison
+            Map<String, IndexMetadata> refIndexes = buildIndexMapByName(refTable.getIndexes());
+            Map<String, IndexMetadata> targetIndexes = buildIndexMapByName(targetTable.getIndexes());
 
-            for (String sig : refIndexSigs) {
-                if (!targetIndexSigs. contains(sig)) {
-                    result.addMissingIndex(tableName, sig);
+            // Find missing indexes
+            for (String indexName : refIndexes.keySet()) {
+                IndexMetadata refIndex = refIndexes.get(indexName);
+                IndexMetadata targetIndex = targetIndexes.get(indexName);
+
+                if (targetIndex == null) {
+                    // Index completely missing
+                    result.addMissingIndexDetailed(tableName, refIndex);
+                } else {
+                    // Index exists - compare properties
+                    List<String> diffs = new ArrayList<>();
+
+                    // Compare columns
+                    if (!refIndex.getColumns().equals(targetIndex.getColumns())) {
+                        diffs.add("Columns differ");
+                    }
+
+                    // Compare uniqueness (CRITICAL!)
+                    if (refIndex.isUnique() != targetIndex.isUnique()) {
+                        diffs.add("Uniqueness: " + refIndex.isUnique() + " != " + targetIndex.isUnique());
+                    }
+
+                    // Compare index type
+                    if (!Objects.equals(refIndex.getIndexType(), targetIndex.getIndexType())) {
+                        diffs.add("Type: " + refIndex.getIndexType() + " != " + targetIndex.getIndexType());
+                    }
+
+                    if (!diffs.isEmpty()) {
+                        result.addModifiedIndexDetailed(tableName, indexName, refIndex, targetIndex);
+                    }
+                }
+            }
+
+            // Find extra indexes
+            for (String indexName : targetIndexes.keySet()) {
+                if (!refIndexes.containsKey(indexName)) {
+                    IndexMetadata targetIndex = targetIndexes.get(indexName);
+                    result.addExtraIndexDetailed(tableName, targetIndex);
                 }
             }
         }
+    }
+
+    private Map<String, IndexMetadata> buildIndexMapByName(List<IndexMetadata> indexes) {
+        Map<String, IndexMetadata> map = new HashMap<>();
+        for (IndexMetadata index : indexes) {
+            map.put(index.getName().toUpperCase(), index);
+        }
+        return map;
     }
 
     private Map<String, ConstraintMetadata> buildSignatureMap(List<ConstraintMetadata> constraints) {
@@ -136,13 +203,5 @@ public class ComparisonEngine {
             map.put(c.getSignature(), c);
         }
         return map;
-    }
-
-    private Set<String> buildIndexSignatures(List<IndexMetadata> indexes) {
-        Set<String> signatures = new HashSet<>();
-        for (IndexMetadata index : indexes) {
-            signatures. add(String.join(",", index.getColumns()));
-        }
-        return signatures;
     }
 }
