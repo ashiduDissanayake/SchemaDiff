@@ -1,10 +1,10 @@
 # SchemaDiff - Database Schema Comparison Tool
 
-A comprehensive database schema comparison tool supporting MySQL, PostgreSQL, Microsoft SQL Server, and Oracle Database.
+A comprehensive database schema comparison tool supporting MySQL, PostgreSQL, Microsoft SQL Server, Oracle Database, and IBM DB2.
 
 ## 🎯 Features
 
-- **Four Production-Ready Extractors**: MySQL, PostgreSQL, MSSQL, Oracle
+- **Five Production-Ready Extractors**: MySQL, PostgreSQL, MSSQL, Oracle, DB2
 - **Comprehensive Metadata Extraction**: Tables, columns, constraints, indexes
 - **Auto-Increment Detection**: Database-specific (AUTO_INCREMENT, SERIAL, IDENTITY, SEQUENCE)
 - **Foreign Key Rules**: ON DELETE/UPDATE CASCADE detection
@@ -71,6 +71,16 @@ java21 -jar target/schemadiff2-2.0.0.jar \
     --image gvenzl/oracle-xe:21-slim
 ```
 
+#### DB2
+
+```bash
+java21 -jar target/schemadiff2-2.0.0.jar \
+    --db-type db2 \
+    --reference schema1.sql \
+    --target schema2.sql \
+    --image ibmcom/db2
+```
+
 ## 📊 What Gets Detected
 
 ### Tables
@@ -101,8 +111,10 @@ java21 -jar target/schemadiff2-2.0.0.jar \
 - **IMPLEMENTATION_COMPLETE.md** - Overall project summary
 - **POSTGRES_QUICK_START.md** - PostgreSQL usage guide
 - **MSSQL_QUICK_START.md** - MSSQL usage guide
+- **DB2_QUICK_START.md** - DB2 usage guide
 - **POSTGRESQL_EXTRACTOR_SUMMARY.md** - PostgreSQL technical details
 - **MSSQL_EXTRACTOR_SUMMARY.md** - MSSQL technical details
+- **DB2_EXTRACTOR_SUMMARY.md** - DB2 technical details
 
 ## 🏗️ Architecture
 
@@ -131,6 +143,12 @@ java21 -jar target/schemadiff2-2.0.0.jar \
    - NUMBER, VARCHAR2, CLOB types
    - ALL_TAB_COMMENTS extraction
    - NORMAL/BITMAP/FUNCTION-BASED indexes
+
+5. **DB2Extractor**
+   - IDENTITY column detection
+   - SYSCAT views integration
+   - VARCHAR/DECIMAL/CLOB/BLOB support
+   - CHECK/UNIQUE constraint support
 
 ### Common Features
 
@@ -164,19 +182,19 @@ java21 -jar target/schemadiff2-2.0.0.jar --help
 
 ## 📈 Code Metrics
 
-- **Total Extractor Code**: 3,407 lines
+- **Total Extractor Code**: ~4,000 lines
 - **MySQL Extractor**: 925 lines
 - **PostgreSQL Extractor**: 828 lines
 - **MSSQL Extractor**: 833 lines
 - **Oracle Extractor**: 821 lines
+- **DB2 Extractor**: ~600 lines
 - **Inner Classes**: 9 per extractor
-- **Documentation Files**: 10 files
+- **Documentation Files**: 13 files
 
 ## 🤝 Contributing
 
 Contributions are welcome! Areas for improvement:
 
-- [ ] DB2 extractor
 - [ ] Oracle 12c+ IDENTITY column detection
 - [ ] Unit tests with Testcontainers
 - [ ] Performance optimization
@@ -189,9 +207,8 @@ Contributions are welcome! Areas for improvement:
 
 ## ✅ Status
 
-**Production Ready** - All four major database extractors are fully implemented, tested, and documented.
+**Production Ready** - All five major database extractors are fully implemented, tested, and documented.
 
 ---
 
 Built with ❤️ using Java 21
-
