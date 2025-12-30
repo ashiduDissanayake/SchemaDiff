@@ -1,0 +1,39 @@
+Mode: SCRIPT_VS_SCRIPT
+✓ Executed 334 SQL statements successfully
+✓ Executed 329 SQL statements successfully (5 errors skipped)
+
+⚠️  Note: 5 statement(s) failed but were skipped:
+  - Statement #4: You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near ') ROW_FORMAT=DYNAMIC ENGINE=INNODB' at line 5
+  - Statement #88: Failed to add the foreign key constraint. Missing index for constraint 'IDN_OIDC_PROPERTY_ibfk_1' in the referenced table 'IDN_OAUTH_CONSUMER_APPS'
+  - Statement #95: Failed to add the foreign key constraint. Missing index for constraint 'IDN_OAUTH2_CIBA_AUTH_CODE_ibfk_1' in the referenced table 'IDN_OAUTH_CONSUMER_APPS'
+  ... and 2 more errors
+
+═══════════════════════════════════════════════════════════
+[-] SCHEMA SUMMARY:  6 Differences Found
+═══════════════════════════════════════════════════════════
+ |
+ ├── [X] MISSING TABLES (4)
+ │   ├── IDN_OAUTH2_CIBA_AUTH_CODE
+ │   ├── IDN_OAUTH2_CIBA_REQUEST_SCOPES
+ │   ├── IDN_OAUTH2_SCOPE_VALIDATORS
+ │   └── IDN_OIDC_PROPERTY
+ |
+ ├── [C] CONSTRAINT DIFFERENCES
+ │   └── [!] Table: IDN_OAUTH_CONSUMER_APPS
+        └── [X] Missing Constraint: UNIQUE
+ |
+ └── [I] INDEX DIFFERENCES
+     └── [!] Table: IDN_OAUTH_CONSUMER_APPS
+        └── [X] Missing Index on: CONSUMER_KEY
+
+═══════════════════════════════════════════════════════════
+Legend:
+  [-] Root summary
+  [X] Missing:  Exists in Reference but not in Target
+  [+] Extra:  Exists in Target but not in Reference
+  [M] Modified: Structural change detected
+  [! ] Warning: Requires attention
+  [C] Constraint mismatch
+  [I] Index mismatch
+═══════════════════════════════════════════════════════════
+

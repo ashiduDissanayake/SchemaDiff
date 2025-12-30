@@ -54,7 +54,7 @@ public class SchemaDiffCLI implements Callable<Integer> {
 
             // Determine operational mode
             ComparisonMode mode = detectMode(reference, target);
-            System.out.println("📊 Mode: " + mode);
+            System.out.println("Mode: " + mode);
 
             // Extract reference metadata
             DatabaseMetadata refMetadata;

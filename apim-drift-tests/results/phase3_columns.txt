@@ -1,0 +1,161 @@
+Mode: SCRIPT_VS_SCRIPT
+✓ Executed 334 SQL statements successfully
+✓ Executed 329 SQL statements successfully (3 errors skipped)
+
+⚠️  Note: 3 statement(s) failed but were skipped:
+  - Statement #5: Referencing column 'CONSUMER_KEY_ID' and referenced column 'ID' in foreign key constraint 'IDN_OAUTH1A_REQUEST_TOKEN_ibfk_1' are incompatible.
+  - Statement #150: Table 'test.IDN_OAUTH2_TOKEN_BINDING' doesn't exist
+  - Statement #151: Table 'test.IDN_OAUTH2_TOKEN_BINDING' doesn't exist
+
+═══════════════════════════════════════════════════════════
+[-] SCHEMA SUMMARY:  105 Differences Found
+═══════════════════════════════════════════════════════════
+ |
+ ├── [X] MISSING TABLES (3)
+ │   ├── IDN_OAUTH1A_REQUEST_TOKEN
+ │   ├── IDN_OAUTH2_TOKEN_BINDING
+ │   └── IDN_OPENID_USER_RPS
+ |
+ ├── [M] COLUMN DIFFERENCES
+ │   ├── [! ] Table:  IDN_AUTH_SESSION_APP_INFO
+ │      ├── [M] Modified Column: SESSION_ID - Type mismatch: varchar(100) != varchar(200)
+ │      ├── [M] Modified Column: SUBJECT - Type mismatch: varchar(100) != varchar(200)
+ │      └── [M] Modified Column: INBOUND_AUTH_TYPE - Type mismatch: varchar(255) != varchar(512)
+ │   ├── [! ] Table:  IDN_AUTH_SESSION_META_DATA
+ │      ├── [M] Modified Column: SESSION_ID - Type mismatch: varchar(100) != varchar(200)
+ │      ├── [M] Modified Column: PROPERTY_TYPE - Type mismatch: varchar(100) != varchar(200)
+ │      └── [M] Modified Column: VALUE - Type mismatch: varchar(255) != varchar(512)
+ │   ├── [! ] Table:  IDN_AUTH_SESSION_STORE
+ │      ├── [M] Modified Column: SESSION_ID - Type mismatch: varchar(100) != varchar(200)
+ │      ├── [M] Modified Column: SESSION_TYPE - Type mismatch: varchar(100) != varchar(200)
+ │      ├── [M] Modified Column: OPERATION - Type mismatch: varchar(10) != varchar(20)
+ │      └── [M] Modified Column: SESSION_OBJECT - Type mismatch: blob(65535) != mediumblob(999999)
+ │   ├── [! ] Table:  IDN_AUTH_TEMP_SESSION_STORE
+ │      ├── [M] Modified Column: SESSION_ID - Type mismatch: varchar(100) != varchar(200)
+ │      ├── [M] Modified Column: SESSION_TYPE - Type mismatch: varchar(100) != varchar(200)
+ │      └── [M] Modified Column: OPERATION - Type mismatch: varchar(10) != varchar(20)
+ │   ├── [! ] Table:  IDN_AUTH_USER
+ │      ├── [M] Modified Column: USER_ID - Type mismatch: varchar(255) != varchar(512)
+ │      ├── [M] Modified Column: USER_NAME - Type mismatch: varchar(255) != varchar(512)
+ │      ├── [M] Modified Column: DOMAIN_NAME - Type mismatch: varchar(255) != varchar(512)
+ │      └── [M] Modified Column: IDP_ID - Type mismatch: int(10) != bigint(19)
+ │   ├── [! ] Table:  IDN_AUTH_USER_SESSION_MAPPING
+ │      ├── [M] Modified Column: USER_ID - Type mismatch: varchar(255) != varchar(512)
+ │      └── [M] Modified Column: SESSION_ID - Type mismatch: varchar(255) != varchar(512)
+ │   ├── [! ] Table:  IDN_IDENTITY_META_DATA
+ │      ├── [M] Modified Column: USER_NAME - Type mismatch: varchar(255) != varchar(512)
+ │      ├── [M] Modified Column: METADATA_TYPE - Type mismatch: varchar(255) != varchar(512)
+ │      ├── [M] Modified Column: METADATA - Type mismatch: varchar(255) != varchar(512)
+ │      └── [M] Modified Column: VALID - Type mismatch: varchar(255) != varchar(512)
+ │   ├── [! ] Table:  IDN_IDENTITY_USER_DATA
+ │      ├── [M] Modified Column: USER_NAME - Type mismatch: varchar(255) != varchar(512)
+ │      ├── [M] Modified Column: DATA_KEY - Type mismatch: varchar(255) != varchar(512)
+ │      └── [M] Modified Column: DATA_VALUE - Type mismatch: varchar(2048) != text(65535)
+ │   ├── [! ] Table:  IDN_OAUTH1A_ACCESS_TOKEN
+ │      ├── [M] Modified Column: ACCESS_TOKEN_SECRET - Type mismatch: varchar(512) != varchar(1024)
+ │      └── [X] Missing Column: AUTHZ_USER [varchar(512)]
+ │   ├── [! ] Table:  IDN_OAUTH2_ACCESS_TOKEN
+ │      ├── [M] Modified Column: TOKEN_ID - Type mismatch: varchar(255) != varchar(512)
+ │      ├── [M] Modified Column: ACCESS_TOKEN - Type mismatch: varchar(2048) != text(65535)
+ │      ├── [M] Modified Column: AUTHZ_USER - Type mismatch: varchar(100) != varchar(200)
+ │      ├── [M] Modified Column: USER_TYPE - Type mismatch: varchar(25) != varchar(50)
+ │      ├── [M] Modified Column: GRANT_TYPE - Type mismatch: varchar(50) != varchar(100)
+ │      ├── [M] Modified Column: TOKEN_SCOPE_HASH - Type mismatch: varchar(32) != varchar(64)
+ │      ├── [M] Modified Column: TOKEN_STATE - Type mismatch: varchar(25) != varchar(50)
+ │      ├── [M] Modified Column: TOKEN_STATE_ID - Type mismatch: varchar(128) != varchar(256)
+ │      ├── [M] Modified Column: ACCESS_TOKEN_HASH - Type mismatch: varchar(512) != varchar(1024)
+ │      ├── [M] Modified Column: TOKEN_BINDING_REF - Type mismatch: varchar(32) != varchar(64)
+ │      └── [X] Missing Column: CONSENTED_TOKEN [varchar(6)]
+ │   ├── [! ] Table:  IDN_OAUTH2_ACCESS_TOKEN_AUDIT
+ │      ├── [M] Modified Column: USER_DOMAIN - Type mismatch: varchar(50) != varchar(100)
+ │      ├── [M] Modified Column: TOKEN_STATE - Type mismatch: varchar(25) != varchar(50)
+ │      ├── [M] Modified Column: SUBJECT_IDENTIFIER - Type mismatch: varchar(255) != varchar(512)
+ │      └── [X] Missing Column: REFRESH_TOKEN_HASH [varchar(512)]
+ │   ├── [! ] Table:  IDN_OAUTH2_ACCESS_TOKEN_SCOPE
+ │      ├── [M] Modified Column: TOKEN_ID - Type mismatch: varchar(255) != varchar(512)
+ │      └── [M] Modified Column: TOKEN_SCOPE - Type mismatch: varchar(100) != varchar(200)
+ │   ├── [! ] Table:  IDN_OAUTH2_AUTHORIZATION_CODE
+ │      ├── [M] Modified Column: AUTHORIZATION_CODE - Type mismatch: varchar(2048) != text(65535)
+ │      ├── [M] Modified Column: SCOPE - Type mismatch: varchar(2048) != text(65535)
+ │      ├── [M] Modified Column: AUTHZ_USER - Type mismatch: varchar(100) != varchar(200)
+ │      ├── [M] Modified Column: USER_DOMAIN - Type mismatch: varchar(50) != varchar(100)
+ │      ├── [M] Modified Column: STATE - Type mismatch: varchar(25) != varchar(50)
+ │      ├── [M] Modified Column: PKCE_CODE_CHALLENGE - Type mismatch: varchar(255) != varchar(512)
+ │      └── [M] Modified Column: PKCE_CODE_CHALLENGE_METHOD - Type mismatch: varchar(128) != varchar(256)
+ │   ├── [! ] Table:  IDN_OAUTH2_AUTHZ_CODE_SCOPE
+ │      └── [M] Modified Column: SCOPE - Type mismatch: varchar(60) != varchar(120)
+ │   ├── [! ] Table:  IDN_OAUTH2_DEVICE_FLOW
+ │      ├── [M] Modified Column: DEVICE_CODE - Type mismatch: varchar(255) != varchar(512)
+ │      ├── [M] Modified Column: USER_CODE - Type mismatch: varchar(25) != varchar(50)
+ │      ├── [M] Modified Column: STATUS - Type mismatch: varchar(25) != varchar(50)
+ │      ├── [M] Modified Column: AUTHZ_USER - Type mismatch: varchar(100) != varchar(200)
+ │      └── [X] Missing Column: USER_DOMAIN [varchar(50)]
+ │   ├── [! ] Table:  IDN_OAUTH2_DEVICE_FLOW_SCOPES
+ │      ├── [M] Modified Column: SCOPE_ID - Type mismatch: varchar(255) != varchar(512)
+ │      └── [M] Modified Column: SCOPE - Type mismatch: varchar(255) != varchar(512)
+ │   ├── [! ] Table:  IDN_OAUTH2_RESOURCE_SCOPE
+ │      └── [M] Modified Column: RESOURCE_PATH - Type mismatch: varchar(255) != varchar(512)
+ │   ├── [! ] Table:  IDN_OAUTH2_SCOPE
+ │      ├── [M] Modified Column: NAME - Type mismatch: varchar(255) != varchar(512)
+ │      ├── [M] Modified Column: DISPLAY_NAME - Type mismatch: varchar(255) != varchar(512)
+ │      ├── [M] Modified Column: DESCRIPTION - Type mismatch: varchar(512) != text(65535)
+ │      └── [M] Modified Column: SCOPE_TYPE - Type mismatch: varchar(255) != varchar(512)
+ │   ├── [! ] Table:  IDN_OAUTH2_SCOPE_BINDING
+ │      ├── [M] Modified Column: SCOPE_BINDING - Type mismatch: varchar(255) != varchar(512)
+ │      └── [M] Modified Column: BINDING_TYPE - Type mismatch: varchar(255) != varchar(512)
+ │   ├── [! ] Table:  IDN_OAUTH2_SCOPE_VALIDATORS
+ │      └── [M] Modified Column: SCOPE_VALIDATOR - Type mismatch: varchar(128) != varchar(256)
+ │   ├── [! ] Table:  IDN_OAUTH_CONSUMER_APPS
+ │      ├── [M] Modified Column: CONSUMER_KEY - Type mismatch: varchar(255) != varchar(512)
+ │      ├── [M] Modified Column: CONSUMER_SECRET - Type mismatch: varchar(2048) != text(65535)
+ │      ├── [M] Modified Column: USER_DOMAIN - Type mismatch: varchar(50) != varchar(100)
+ │      ├── [X] Missing Column: CALLBACK_URL [varchar(2048)]
+ │      ├── [M] Modified Column: GRANT_TYPES - Type mismatch: varchar(1024) != varchar(2048)
+ │      ├── [M] Modified Column: PKCE_MANDATORY - Type mismatch: char(1) != tinyint(3)
+ │      └── [M] Modified Column: APP_STATE - Type mismatch: varchar(25) != varchar(50)
+ │   ├── [! ] Table:  IDN_OPENID_ASSOCIATIONS
+ │      ├── [M] Modified Column: HANDLE - Type mismatch: varchar(255) != varchar(512)
+ │      ├── [M] Modified Column: ASSOC_TYPE - Type mismatch: varchar(255) != varchar(512)
+ │      ├── [M] Modified Column: MAC_KEY - Type mismatch: varchar(255) != varchar(512)
+ │      └── [M] Modified Column: ASSOC_STORE - Type mismatch: varchar(128) != varchar(256)
+ │   ├── [! ] Table:  IDN_OPENID_REMEMBER_ME
+ │      ├── [M] Modified Column: USER_NAME - Type mismatch: varchar(255) != varchar(512)
+ │      └── [M] Modified Column: COOKIE_VALUE - Type mismatch: varchar(1024) != text(65535)
+ │   ├── [! ] Table:  IDN_SCIM_GROUP
+ │      ├── [M] Modified Column: ROLE_NAME - Type mismatch: varchar(255) != varchar(512)
+ │      ├── [M] Modified Column: ATTR_NAME - Type mismatch: varchar(1024) != varchar(2048)
+ │      └── [M] Modified Column: ATTR_VALUE - Type mismatch: varchar(1024) != text(65535)
+ │   ├── [! ] Table:  IDN_STS_STORE
+ │      ├── [M] Modified Column: TOKEN_ID - Type mismatch: varchar(255) != varchar(512)
+ │      └── [M] Modified Column: STATE - Type mismatch: int(10) != tinyint(3)
+ │   ├── [! ] Table:  IDN_THRIFT_SESSION
+ │      ├── [M] Modified Column: SESSION_ID - Type mismatch: varchar(255) != varchar(512)
+ │      ├── [M] Modified Column: USER_NAME - Type mismatch: varchar(255) != varchar(512)
+ │      └── [M] Modified Column: TENANT_ID - Type mismatch: int(10) != bigint(19)
+ │   └── [! ] Table:  SP_APP
+        ├── [M] Modified Column: APP_NAME - Type mismatch: varchar(255) != varchar(512)
+        ├── [M] Modified Column: USER_STORE - Type mismatch: varchar(255) != varchar(512)
+        ├── [M] Modified Column: USERNAME - Type mismatch: varchar(255) != varchar(512)
+        ├── [M] Modified Column: DESCRIPTION - Type mismatch: varchar(1024) != text(65535)
+        ├── [M] Modified Column: ROLE_CLAIM - Type mismatch: varchar(512) != varchar(1024)
+        ├── [M] Modified Column: AUTH_TYPE - Type mismatch: varchar(255) != varchar(512)
+        ├── [M] Modified Column: PROVISIONING_USERSTORE_DOMAIN - Type mismatch: varchar(512) != varchar(1024)
+        ├── [M] Modified Column: IS_LOCAL_CLAIM_DIALECT - Type mismatch: char(1) != tinyint(3)
+        ├── [M] Modified Column: IS_SEND_AUTH_LIST_OF_IDPS - Type mismatch: char(1) != tinyint(3)
+        ├── [M] Modified Column: SUBJECT_CLAIM_URI - Type mismatch: varchar(512) != varchar(1024)
+        ├── [X] Missing Column: IS_DUMB_MODE [char(1)]
+        ├── [M] Modified Column: IMAGE_URL - Type mismatch: varchar(1024) != varchar(2048)
+        └── [M] Modified Column: ACCESS_URL - Type mismatch: varchar(1024) != varchar(2048)
+ |
+
+═══════════════════════════════════════════════════════════
+Legend:
+  [-] Root summary
+  [X] Missing:  Exists in Reference but not in Target
+  [+] Extra:  Exists in Target but not in Reference
+  [M] Modified: Structural change detected
+  [! ] Warning: Requires attention
+  [C] Constraint mismatch
+  [I] Index mismatch
+═══════════════════════════════════════════════════════════
+

@@ -3,267 +3,593 @@ package com.schemadiff.core.extractors;
 import com.schemadiff.core.MetadataExtractor;
 import com.schemadiff.core.SignatureGenerator;
 import com.schemadiff.model.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.sql.*;
 import java.util.*;
 
+/**
+ * Oracle Database-specific metadata extractor with comprehensive support for:
+ * - SEQUENCE-based auto-increment detection via triggers
+ * - CHECK constraints
+ * - Foreign key ON DELETE rules (CASCADE, SET NULL, NO ACTION)
+ * - VARCHAR2, CLOB, BLOB, and other Oracle types
+ * - Table and column comments (USER_TAB_COMMENTS, USER_COL_COMMENTS)
+ * - Index types (NORMAL, BITMAP, FUNCTION-BASED)
+ */
 public class OracleExtractor extends MetadataExtractor {
 
-    @Override
-    public DatabaseMetadata extract(Connection conn) throws Exception {
-        DatabaseMetadata metadata = new DatabaseMetadata();
+    private static final Logger log = LoggerFactory.getLogger(OracleExtractor.class);
 
-        String currentUser = getCurrentUser(conn);
-        extractTables(conn, metadata, currentUser);
-        extractColumns(conn, metadata, currentUser);
-        extractConstraints(conn, metadata, currentUser);
-        extractIndexes(conn, metadata, currentUser);
+    private static final String CONSTRAINT_TYPE_PK = "PRIMARY_KEY";
+    private static final String CONSTRAINT_TYPE_FK = "FOREIGN_KEY";
+    private static final String CONSTRAINT_TYPE_CHECK = "CHECK";
+    private static final String CONSTRAINT_TYPE_UNIQUE = "UNIQUE";
+    private static final int QUERY_TIMEOUT_SECONDS = 300;
+    private static final int MAX_RETRIES = 3;
 
-        return metadata;
+    private final String targetSchema;
+    private final boolean enableRetry;
+    private final ExtractionProgress progressListener;
+
+    public interface ExtractionProgress {
+        void onPhaseStart(String phase);
+        void onPhaseComplete(String phase, int itemsProcessed, long durationMs);
+        void onWarning(String message);
     }
 
-    private String getCurrentUser(Connection conn) throws SQLException {
-        try (Statement stmt = conn.createStatement();
-             ResultSet rs = stmt. executeQuery("SELECT USER FROM DUAL")) {
-            if (rs.next()) {
-                return rs.getString(1);
+    public OracleExtractor() {
+        this(null, true, null);
+    }
+
+    public OracleExtractor(String targetSchema) {
+        this(targetSchema, true, null);
+    }
+
+    public OracleExtractor(String targetSchema, boolean enableRetry, ExtractionProgress progressListener) {
+        this.targetSchema = targetSchema;
+        this.enableRetry = enableRetry;
+        this.progressListener = progressListener != null ? progressListener : new NoOpProgress();
+    }
+
+    @Override
+    public DatabaseMetadata extract(Connection conn) throws SQLException {
+        log.info("Starting Oracle schema extraction");
+        long startTime = System.currentTimeMillis();
+
+        validateConnection(conn);
+        DatabaseMetadata metadata = new DatabaseMetadata();
+
+        boolean originalAutoCommit = conn.getAutoCommit();
+        boolean originalReadOnly = conn.isReadOnly();
+        Integer originalTransactionIsolation = null;
+
+        try {
+            originalTransactionIsolation = conn.getTransactionIsolation();
+            conn.setTransactionIsolation(Connection.TRANSACTION_READ_COMMITTED);
+            conn.setAutoCommit(false);
+            conn.setReadOnly(true);
+
+            String owner = getSchemaOwner(conn);
+            metadata.setSchemaName(owner);
+            log.info("Extracting schema: {}", owner);
+
+            extractTables(conn, metadata, owner);
+            extractColumns(conn, metadata, owner);
+            extractConstraints(conn, metadata, owner);
+            extractIndexes(conn, metadata, owner);
+
+            validateMetadata(metadata);
+            conn.commit();
+
+            long duration = System.currentTimeMillis() - startTime;
+            log.info("Schema extraction completed successfully in {}ms - Tables: {}, Indexes: {}, Constraints: {}",
+                    duration, metadata.getTables().size(), countIndexes(metadata), countConstraints(metadata));
+
+            return metadata;
+
+        } catch (SQLException e) {
+            log.error("Schema extraction failed", e);
+            try {
+                conn.rollback();
+            } catch (SQLException rollbackEx) {
+                log.error("Failed to rollback transaction", rollbackEx);
             }
-            throw new SQLException("Could not determine current user");
+            throw new SQLException("Failed to extract schema metadata: " + e.getMessage(), e);
+
+        } finally {
+            try {
+                if (originalTransactionIsolation != null) {
+                    conn.setTransactionIsolation(originalTransactionIsolation);
+                }
+                conn.setAutoCommit(originalAutoCommit);
+                conn.setReadOnly(originalReadOnly);
+            } catch (SQLException e) {
+                log.error("Failed to restore connection state", e);
+            }
+        }
+    }
+
+    private void validateConnection(Connection conn) throws SQLException {
+        if (conn == null || conn.isClosed()) {
+            throw new SQLException("Invalid or closed database connection");
+        }
+
+        DatabaseMetaData dbMeta = conn.getMetaData();
+        int majorVersion = dbMeta.getDatabaseMajorVersion();
+        int minorVersion = dbMeta.getDatabaseMinorVersion();
+        log.info("Oracle version: {}.{}", majorVersion, minorVersion);
+
+        if (majorVersion < 11) {
+            log.warn("Oracle version {}.{} may not support all features. Recommended: 11g+",
+                    majorVersion, minorVersion);
+        }
+    }
+
+    private String getSchemaOwner(Connection conn) throws SQLException {
+        if (targetSchema != null && !targetSchema.trim().isEmpty()) {
+            return targetSchema.trim().toUpperCase();
+        }
+
+        try (Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery("SELECT USER FROM DUAL")) {
+            if (rs.next()) {
+                String owner = rs.getString(1);
+                if (owner == null || owner.trim().isEmpty()) {
+                    throw new SQLException("Could not determine current schema owner");
+                }
+                return owner.trim().toUpperCase();
+            }
+            throw new SQLException("Failed to determine current schema owner");
         }
     }
 
     private void extractTables(Connection conn, DatabaseMetadata metadata, String owner) throws SQLException {
-        String query = "SELECT table_name FROM all_tables WHERE owner = ?  ORDER BY table_name";
+        String phase = "Tables";
+        progressListener.onPhaseStart(phase);
+        long startTime = System.currentTimeMillis();
 
-        try (PreparedStatement pstmt = conn.prepareStatement(query)) {
-            pstmt.setString(1, owner. toUpperCase());
-            ResultSet rs = pstmt.executeQuery();
+        log.debug("Extracting tables");
 
-            while (rs. next()) {
-                metadata.addTable(new TableMetadata(rs.getString("table_name")));
+        String query = """
+            SELECT t.table_name, c.comments AS table_comment
+            FROM all_tables t
+            LEFT JOIN all_tab_comments c ON t.owner = c.owner AND t.table_name = c.table_name
+            WHERE t.owner = ? AND t.nested = 'NO'
+            ORDER BY t.table_name
+            """;
+
+        int count = executeWithRetry(() -> {
+            try (PreparedStatement stmt = conn.prepareStatement(query)) {
+                stmt.setQueryTimeout(QUERY_TIMEOUT_SECONDS);
+                stmt.setString(1, owner);
+
+                int tableCount = 0;
+                try (ResultSet rs = stmt.executeQuery()) {
+                    while (rs.next()) {
+                        String tableName = rs.getString("table_name");
+                        TableMetadata table = new TableMetadata(tableName);
+
+                        String comment = rs.getString("table_comment");
+                        table.setComment(comment != null ? comment : "");
+
+                        metadata.addTable(table);
+                        tableCount++;
+                    }
+                }
+                return tableCount;
             }
-        }
+        });
+
+        long duration = System.currentTimeMillis() - startTime;
+        log.debug("Extracted {} tables in {}ms", count, duration);
+        progressListener.onPhaseComplete(phase, count, duration);
     }
 
     private void extractColumns(Connection conn, DatabaseMetadata metadata, String owner) throws SQLException {
+        String phase = "Columns";
+        progressListener.onPhaseStart(phase);
+        long startTime = System.currentTimeMillis();
+
+        log.debug("Extracting columns");
+
         String query = """
-            SELECT
-                table_name,
-                column_name,
-                data_type,
-                data_length,
-                data_precision,
-                data_scale,
-                nullable,
-                data_default
-            FROM all_tab_columns
-            WHERE owner = ?
-            ORDER BY table_name, column_id
+            SELECT c.table_name, c.column_name, c.column_id AS ordinal_position,
+                   c.data_type, c.data_length, c.data_precision, c.data_scale,
+                   c.nullable, c.data_default, c.char_length,
+                   cm.comments AS column_comment
+            FROM all_tab_columns c
+            LEFT JOIN all_col_comments cm ON c.owner = cm.owner AND c.table_name = cm.table_name AND c.column_name = cm.column_name
+            WHERE c.owner = ?
+            ORDER BY c.table_name, c.column_id
             """;
 
-        try (PreparedStatement pstmt = conn.prepareStatement(query)) {
-            pstmt.setString(1, owner.toUpperCase());
-            ResultSet rs = pstmt.executeQuery();
+        int count = executeWithRetry(() -> {
+            try (PreparedStatement stmt = conn.prepareStatement(query)) {
+                stmt.setQueryTimeout(QUERY_TIMEOUT_SECONDS);
+                stmt.setString(1, owner);
 
-            while (rs.next()) {
-                String tableName = rs.getString("table_name");
-                TableMetadata table = metadata. getTable(tableName);
-                if (table == null) continue;
+                int columnCount = 0;
+                try (ResultSet rs = stmt.executeQuery()) {
+                    while (rs.next()) {
+                        String tableName = rs.getString("table_name");
+                        String columnName = rs.getString("column_name");
 
-                ColumnMetadata column = new ColumnMetadata(
-                    rs.getString("column_name"),
-                    buildDataType(rs),
-                    "N".equals(rs.getString("nullable")),
-                    rs.getString("data_default")
-                );
-                table.addColumn(column);
+                        TableMetadata table = metadata.getTable(tableName);
+                        if (table == null) {
+                            log.warn("Column {}.{} found for non-existent table", tableName, columnName);
+                            continue;
+                        }
+
+                        String dataType = buildDataType(rs);
+                        boolean notNull = "N".equals(rs.getString("nullable"));
+                        String defaultValue = normalizeDefault(rs.getString("data_default"));
+
+                        ColumnMetadata column = new ColumnMetadata(columnName, dataType, notNull, defaultValue);
+                        column.setOrdinalPosition(rs.getInt("ordinal_position"));
+
+                        String comment = rs.getString("column_comment");
+                        column.setComment(comment != null ? comment : "");
+
+                        table.addColumn(column);
+                        columnCount++;
+                    }
+                }
+                return columnCount;
             }
-        }
+        });
+
+        // Detect auto-increment via sequences and triggers
+        detectAutoIncrementColumns(conn, metadata, owner);
+
+        long duration = System.currentTimeMillis() - startTime;
+        log.debug("Extracted {} columns in {}ms", count, duration);
+        progressListener.onPhaseComplete(phase, count, duration);
     }
 
     private String buildDataType(ResultSet rs) throws SQLException {
-        String baseType = rs.getString("data_type").toLowerCase();
+        String baseType = rs.getString("data_type");
+        if (baseType == null) return "unknown";
 
-        // Oracle NUMBER handling
+        baseType = baseType.toLowerCase().trim();
+
+        // Handle NUMBER type
         if (baseType.equals("number")) {
-            Integer precision = rs. getInt("data_precision");
-            Integer scale = rs.getInt("data_scale");
+            Integer precision = getNullableInt(rs, "data_precision");
+            Integer scale = getNullableInt(rs, "data_scale");
 
-            if (rs.wasNull() || precision == null) {
-                return "int"; // NUMBER without precision = integer
+            if (precision == null) {
+                return "int";
             }
 
             if (scale != null && scale > 0) {
                 return "numeric(" + precision + "," + scale + ")";
             }
-            return "int";
+
+            if (precision <= 10) {
+                return "int";
+            } else if (precision <= 19) {
+                return "bigint";
+            }
+            return "numeric(" + precision + ")";
         }
 
-        // VARCHAR2 handling
-        if (baseType.equals("varchar2")) {
-            Integer length = rs.getInt("data_length");
-            if (! rs.wasNull()) {
+        // Handle VARCHAR2 and CHAR types
+        if (baseType.equals("varchar2") || baseType.equals("char") ||
+            baseType.equals("nvarchar2") || baseType.equals("nchar")) {
+            Integer length = getNullableInt(rs, "char_length");
+            if (length == null) {
+                length = getNullableInt(rs, "data_length");
+            }
+            if (length != null && length > 0) {
                 return "varchar(" + length + ")";
             }
+            return "varchar";
         }
 
-        // CHAR handling
-        if (baseType.equals("char")) {
-            Integer length = rs. getInt("data_length");
-            if (!rs.wasNull()) {
-                return "char(" + length + ")";
-            }
-        }
-
-        // Normalize types
+        // Normalize Oracle-specific types
         return switch (baseType) {
-            case "varchar2" -> "varchar";
-            case "clob" -> "longtext";
-            case "blob" -> "blob";
+            case "clob", "nclob" -> "text";
+            case "blob" -> "bytea";
+            case "raw" -> "bytea";
+            case "long" -> "text";
             case "date" -> "timestamp";
-            case "timestamp(6)" -> "timestamp";
+            case "timestamp" -> "timestamp";
+            case "timestamp with time zone" -> "timestamptz";
+            case "timestamp with local time zone" -> "timestamp";
+            case "binary_float" -> "real";
+            case "binary_double" -> "double precision";
             default -> baseType;
         };
     }
 
-    private void extractConstraints(Connection conn, DatabaseMetadata metadata, String owner) throws SQLException {
-        // Primary Keys
-        String pkQuery = """
-            SELECT
-                c.table_name,
-                cc.column_name,
-                c.constraint_name
-            FROM all_constraints c
-            JOIN all_cons_columns cc ON c.constraint_name = cc.constraint_name AND c.owner = cc.owner
-            WHERE c.constraint_type = 'P'
-            AND c.owner = ?
-            ORDER BY c.table_name, cc.position
+    private String normalizeDefault(String defaultValue) {
+        if (defaultValue == null || defaultValue.trim().isEmpty()) {
+            return null;
+        }
+
+        defaultValue = defaultValue.trim();
+
+        if (defaultValue.startsWith("'") && defaultValue.endsWith("'") && defaultValue.length() > 1) {
+            defaultValue = defaultValue.substring(1, defaultValue.length() - 1);
+        }
+
+        if (defaultValue.equalsIgnoreCase("SYSDATE")) {
+            return "SYSDATE";
+        }
+        if (defaultValue.toUpperCase().startsWith("SYS_GUID()")) {
+            return "SYS_GUID()";
+        }
+
+        return defaultValue;
+    }
+
+    private void detectAutoIncrementColumns(Connection conn, DatabaseMetadata metadata, String owner) {
+        String query = """
+            SELECT t.table_name, t.trigger_body
+            FROM all_triggers t
+            WHERE t.owner = ?
+            AND t.trigger_type = 'BEFORE EACH ROW'
+            AND t.triggering_event LIKE '%INSERT%'
+            AND UPPER(t.trigger_body) LIKE '%NEXTVAL%'
             """;
 
-        Map<String, ConstraintMetadata> pkMap = new HashMap<>();
-        try (PreparedStatement pstmt = conn.prepareStatement(pkQuery)) {
-            pstmt.setString(1, owner. toUpperCase());
-            ResultSet rs = pstmt.executeQuery();
+        try (PreparedStatement stmt = conn.prepareStatement(query)) {
+            stmt.setString(1, owner);
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    String tableName = rs.getString("table_name");
+                    String triggerBody = rs.getString("trigger_body");
 
-            while (rs.next()) {
-                String table = rs.getString("table_name");
-                String column = rs. getString("column_name");
-
-                ConstraintMetadata pk = pkMap.computeIfAbsent(table, k ->
-                    new ConstraintMetadata("PRIMARY_KEY", "PRIMARY_KEY", new ArrayList<>(), null)
-                );
-                pk.getColumns().add(column);
-            }
-        }
-
-        for (Map.Entry<String, ConstraintMetadata> entry : pkMap. entrySet()) {
-            ConstraintMetadata pk = entry. getValue();
-            pk.setSignature(SignatureGenerator.generate(pk));
-            TableMetadata table = metadata.getTable(entry. getKey());
-            if (table != null) table.addConstraint(pk);
-        }
-
-        // Foreign Keys
-        String fkQuery = """
-            SELECT
-                c.table_name,
-                cc.column_name,
-                c.r_constraint_name,
-                rc.table_name AS ref_table_name,
-                c.constraint_name
-            FROM all_constraints c
-            JOIN all_cons_columns cc ON c.constraint_name = cc.constraint_name AND c.owner = cc.owner
-            JOIN all_constraints rc ON c.r_constraint_name = rc.constraint_name AND c.r_owner = rc.owner
-            WHERE c.constraint_type = 'R'
-            AND c. owner = ?
-            ORDER BY c.table_name, cc.position
-            """;
-
-        Map<String, ConstraintMetadata> fkMap = new HashMap<>();
-        try (PreparedStatement pstmt = conn.prepareStatement(fkQuery)) {
-            pstmt.setString(1, owner.toUpperCase());
-            ResultSet rs = pstmt. executeQuery();
-
-            while (rs.next()) {
-                String table = rs.getString("table_name");
-                String column = rs.getString("column_name");
-                String refTable = rs. getString("ref_table_name");
-                String constraintName = rs.getString("constraint_name");
-
-                String key = table + "|" + constraintName;
-                ConstraintMetadata fk = fkMap.computeIfAbsent(key, k ->
-                    new ConstraintMetadata(constraintName, "FOREIGN_KEY", new ArrayList<>(), refTable)
-                );
-                fk.getColumns().add(column);
-            }
-        }
-
-        for (ConstraintMetadata fk : fkMap.values()) {
-            fk.setSignature(SignatureGenerator.generate(fk));
-            for (String tableName : metadata.getTableNames()) {
-                TableMetadata table = metadata.getTable(tableName);
-                if (table != null && fk.getColumns().stream().anyMatch(col -> table.getColumn(col) != null)) {
-                    table. addConstraint(fk);
-                    break;
+                    TableMetadata table = metadata.getTable(tableName);
+                    if (table != null && triggerBody != null) {
+                        for (ColumnMetadata column : table.getColumns()) {
+                            if (triggerBody.toUpperCase().contains(":NEW." + column.getName().toUpperCase())) {
+                                column.setAutoIncrement(true);
+                                log.debug("Detected auto-increment on {}.{} via trigger", tableName, column.getName());
+                                break;
+                            }
+                        }
+                    }
                 }
             }
-        }
-
-        // Unique Constraints
-        String uniqueQuery = """
-            SELECT
-                c.table_name,
-                cc.column_name,
-                c.constraint_name
-            FROM all_constraints c
-            JOIN all_cons_columns cc ON c.constraint_name = cc. constraint_name AND c.owner = cc.owner
-            WHERE c. constraint_type = 'U'
-            AND c.owner = ?
-            ORDER BY c.table_name, cc.position
-            """;
-
-        Map<String, ConstraintMetadata> uniqueMap = new HashMap<>();
-        try (PreparedStatement pstmt = conn.prepareStatement(uniqueQuery)) {
-            pstmt. setString(1, owner.toUpperCase());
-            ResultSet rs = pstmt.executeQuery();
-
-            while (rs. next()) {
-                String table = rs.getString("table_name");
-                String column = rs.getString("column_name");
-                String constraintName = rs.getString("constraint_name");
-
-                String key = table + "|" + constraintName;
-                ConstraintMetadata unique = uniqueMap. computeIfAbsent(key, k ->
-                    new ConstraintMetadata(constraintName, "UNIQUE", new ArrayList<>(), null)
-                );
-                unique.getColumns().add(column);
-            }
-        }
-
-        for (ConstraintMetadata unique : uniqueMap. values()) {
-            unique.setSignature(SignatureGenerator.generate(unique));
-            for (String tableName : metadata.getTableNames()) {
-                TableMetadata table = metadata.getTable(tableName);
-                if (table != null && unique.getColumns().stream().anyMatch(col -> table.getColumn(col) != null)) {
-                    table.addConstraint(unique);
-                    break;
-                }
-            }
+        } catch (SQLException e) {
+            log.warn("Failed to detect auto-increment columns: {}", e.getMessage());
         }
     }
 
-    private void extractIndexes(Connection conn, DatabaseMetadata metadata, String owner) throws SQLException {
+    private void extractConstraints(Connection conn, DatabaseMetadata metadata, String owner) throws SQLException {
+        String phase = "Constraints";
+        progressListener.onPhaseStart(phase);
+        long startTime = System.currentTimeMillis();
+
+        log.debug("Extracting constraints");
+
+        int pkCount = extractPrimaryKeys(conn, metadata, owner);
+        int fkCount = extractForeignKeys(conn, metadata, owner);
+        int checkCount = extractCheckConstraints(conn, metadata, owner);
+        int uniqueCount = extractUniqueConstraints(conn, metadata, owner);
+
+        int total = pkCount + fkCount + checkCount + uniqueCount;
+        long duration = System.currentTimeMillis() - startTime;
+
+        log.debug("Extracted {} constraints (PK: {}, FK: {}, Check: {}, Unique: {}) in {}ms",
+                total, pkCount, fkCount, checkCount, uniqueCount, duration);
+        progressListener.onPhaseComplete(phase, total, duration);
+    }
+
+    private int extractPrimaryKeys(Connection conn, DatabaseMetadata metadata, String owner) throws SQLException {
         String query = """
-            SELECT
-                i.table_name,
-                i.index_name,
-                ic.column_name,
-                i.uniqueness,
-                ic.column_position
+            SELECT c.table_name, cc.column_name, cc.position
+            FROM all_constraints c
+            JOIN all_cons_columns cc ON c.constraint_name = cc.constraint_name AND c.owner = cc.owner
+            WHERE c.constraint_type = 'P' AND c.owner = ?
+            ORDER BY c.table_name, cc.position
+            """;
+
+        return executeWithRetry(() -> {
+            Map<String, List<String>> pkMap = new LinkedHashMap<>();
+
+            try (PreparedStatement stmt = conn.prepareStatement(query)) {
+                stmt.setQueryTimeout(QUERY_TIMEOUT_SECONDS);
+                stmt.setString(1, owner);
+
+                try (ResultSet rs = stmt.executeQuery()) {
+                    while (rs.next()) {
+                        String table = rs.getString("table_name");
+                        String column = rs.getString("column_name");
+                        pkMap.computeIfAbsent(table, k -> new ArrayList<>()).add(column);
+                    }
+                }
+            }
+
+            for (Map.Entry<String, List<String>> entry : pkMap.entrySet()) {
+                String tableName = entry.getKey();
+                TableMetadata table = metadata.getTable(tableName);
+
+                if (table != null) {
+                    ConstraintMetadata pk = new ConstraintMetadata(
+                            CONSTRAINT_TYPE_PK,
+                            CONSTRAINT_TYPE_PK,
+                            entry.getValue(),
+                            null
+                    );
+                    pk.setSignature(SignatureGenerator.generate(pk));
+                    table.addConstraint(pk);
+                }
+            }
+
+            return pkMap.size();
+        });
+    }
+
+    private int extractForeignKeys(Connection conn, DatabaseMetadata metadata, String owner) throws SQLException {
+        String query = """
+            SELECT c.table_name, cc.column_name, cc.position,
+                   rc.table_name AS ref_table_name, rcc.column_name AS ref_column_name,
+                   c.constraint_name, c.delete_rule
+            FROM all_constraints c
+            JOIN all_cons_columns cc ON c.constraint_name = cc.constraint_name AND c.owner = cc.owner
+            JOIN all_constraints rc ON c.r_constraint_name = rc.constraint_name AND c.r_owner = rc.owner
+            JOIN all_cons_columns rcc ON rc.constraint_name = rcc.constraint_name AND rc.owner = rcc.owner AND cc.position = rcc.position
+            WHERE c.constraint_type = 'R' AND c.owner = ?
+            ORDER BY c.table_name, c.constraint_name, cc.position
+            """;
+
+        return executeWithRetry(() -> {
+            Map<ForeignKeyIdentifier, ForeignKeyBuilder> fkMap = new LinkedHashMap<>();
+
+            try (PreparedStatement stmt = conn.prepareStatement(query)) {
+                stmt.setQueryTimeout(QUERY_TIMEOUT_SECONDS);
+                stmt.setString(1, owner);
+
+                try (ResultSet rs = stmt.executeQuery()) {
+                    while (rs.next()) {
+                        String tableName = rs.getString("table_name");
+                        String constraintName = rs.getString("constraint_name");
+                        String columnName = rs.getString("column_name");
+                        String refTableName = rs.getString("ref_table_name");
+                        String refColumnName = rs.getString("ref_column_name");
+                        String deleteRule = normalizeRule(rs.getString("delete_rule"));
+
+                        ForeignKeyIdentifier id = new ForeignKeyIdentifier(tableName, constraintName);
+                        ForeignKeyBuilder builder = fkMap.computeIfAbsent(id, k -> new ForeignKeyBuilder(
+                                tableName, constraintName, refTableName, "NO ACTION", deleteRule
+                        ));
+
+                        builder.addColumn(columnName, refColumnName);
+                    }
+                }
+            }
+
+            for (ForeignKeyBuilder builder : fkMap.values()) {
+                ConstraintMetadata fk = builder.build();
+                fk.setSignature(SignatureGenerator.generate(fk));
+
+                TableMetadata table = metadata.getTable(builder.tableName);
+                if (table != null) {
+                    table.addConstraint(fk);
+                }
+            }
+
+            return fkMap.size();
+        });
+    }
+
+    private String normalizeRule(String rule) {
+        if (rule == null) return "NO ACTION";
+        return switch (rule.trim().toUpperCase()) {
+            case "CASCADE" -> "CASCADE";
+            case "SET NULL" -> "SET NULL";
+            case "NO ACTION" -> "NO ACTION";
+            default -> rule;
+        };
+    }
+
+    private int extractCheckConstraints(Connection conn, DatabaseMetadata metadata, String owner) throws SQLException {
+        String query = """
+            SELECT c.table_name, c.constraint_name, c.search_condition
+            FROM all_constraints c
+            WHERE c.constraint_type = 'C'
+            AND c.owner = ?
+            AND c.search_condition NOT LIKE '%IS NOT NULL'
+            ORDER BY c.table_name, c.constraint_name
+            """;
+
+        return executeWithRetry(() -> {
+            try (PreparedStatement stmt = conn.prepareStatement(query)) {
+                stmt.setQueryTimeout(QUERY_TIMEOUT_SECONDS);
+                stmt.setString(1, owner);
+
+                int count = 0;
+                try (ResultSet rs = stmt.executeQuery()) {
+                    while (rs.next()) {
+                        String tableName = rs.getString("table_name");
+                        String constraintName = rs.getString("constraint_name");
+                        String searchCondition = rs.getString("search_condition");
+
+                        TableMetadata table = metadata.getTable(tableName);
+                        if (table != null) {
+                            ConstraintMetadata check = new ConstraintMetadata(
+                                    CONSTRAINT_TYPE_CHECK,
+                                    constraintName,
+                                    new ArrayList<>(),
+                                    null
+                            );
+                            check.setCheckClause(searchCondition != null ? searchCondition : "");
+                            check.setSignature(SignatureGenerator.generate(check));
+                            table.addConstraint(check);
+                            count++;
+                        }
+                    }
+                }
+                return count;
+            }
+        });
+    }
+
+    private int extractUniqueConstraints(Connection conn, DatabaseMetadata metadata, String owner) throws SQLException {
+        String query = """
+            SELECT c.table_name, cc.column_name, c.constraint_name, cc.position
+            FROM all_constraints c
+            JOIN all_cons_columns cc ON c.constraint_name = cc.constraint_name AND c.owner = cc.owner
+            WHERE c.constraint_type = 'U' AND c.owner = ?
+            ORDER BY c.table_name, c.constraint_name, cc.position
+            """;
+
+        return executeWithRetry(() -> {
+            Map<ConstraintIdentifier, List<String>> uniqueMap = new LinkedHashMap<>();
+
+            try (PreparedStatement stmt = conn.prepareStatement(query)) {
+                stmt.setQueryTimeout(QUERY_TIMEOUT_SECONDS);
+                stmt.setString(1, owner);
+
+                try (ResultSet rs = stmt.executeQuery()) {
+                    while (rs.next()) {
+                        String tableName = rs.getString("table_name");
+                        String constraintName = rs.getString("constraint_name");
+                        String columnName = rs.getString("column_name");
+
+                        ConstraintIdentifier id = new ConstraintIdentifier(tableName, constraintName);
+                        uniqueMap.computeIfAbsent(id, k -> new ArrayList<>()).add(columnName);
+                    }
+                }
+            }
+
+            for (Map.Entry<ConstraintIdentifier, List<String>> entry : uniqueMap.entrySet()) {
+                ConstraintIdentifier id = entry.getKey();
+                TableMetadata table = metadata.getTable(id.tableName);
+
+                if (table != null) {
+                    ConstraintMetadata unique = new ConstraintMetadata(
+                            CONSTRAINT_TYPE_UNIQUE,
+                            id.constraintName,
+                            entry.getValue(),
+                            null
+                    );
+                    unique.setSignature(SignatureGenerator.generate(unique));
+                    table.addConstraint(unique);
+                }
+            }
+
+            return uniqueMap.size();
+        });
+    }
+
+    private void extractIndexes(Connection conn, DatabaseMetadata metadata, String owner) throws SQLException {
+        String phase = "Indexes";
+        progressListener.onPhaseStart(phase);
+        long startTime = System.currentTimeMillis();
+
+        log.debug("Extracting indexes");
+
+        String query = """
+            SELECT i.table_name, i.index_name, ic.column_name,
+                   i.uniqueness, i.index_type, ic.column_position
             FROM all_indexes i
             JOIN all_ind_columns ic ON i.index_name = ic.index_name AND i.table_owner = ic.table_owner
             WHERE i.table_owner = ?
-            AND i.index_type = 'NORMAL'
             AND NOT EXISTS (
                 SELECT 1 FROM all_constraints c
                 WHERE c.constraint_type = 'P'
@@ -273,31 +599,223 @@ public class OracleExtractor extends MetadataExtractor {
             ORDER BY i.table_name, i.index_name, ic.column_position
             """;
 
-        Map<String, IndexMetadata> indexMap = new HashMap<>();
-        try (PreparedStatement pstmt = conn.prepareStatement(query)) {
-            pstmt. setString(1, owner.toUpperCase());
-            ResultSet rs = pstmt.executeQuery();
+        int count = executeWithRetry(() -> {
+            Map<IndexIdentifier, IndexBuilder> indexMap = new LinkedHashMap<>();
 
-            while (rs. next()) {
-                String table = rs.getString("table_name");
-                String indexName = rs. getString("index_name");
-                String column = rs.getString("column_name");
-                boolean unique = "UNIQUE".equals(rs.getString("uniqueness"));
+            try (PreparedStatement stmt = conn.prepareStatement(query)) {
+                stmt.setQueryTimeout(QUERY_TIMEOUT_SECONDS);
+                stmt.setString(1, owner);
 
-                String key = table + "|" + indexName;
-                IndexMetadata index = indexMap.computeIfAbsent(key, k ->
-                    new IndexMetadata(indexName, new ArrayList<>(), unique)
-                );
-                index.getColumns().add(column);
+                try (ResultSet rs = stmt.executeQuery()) {
+                    while (rs.next()) {
+                        String tableName = rs.getString("table_name");
+                        String indexName = rs.getString("index_name");
+                        String columnName = rs.getString("column_name");
+                        boolean unique = "UNIQUE".equals(rs.getString("uniqueness"));
+                        String indexType = rs.getString("index_type");
+
+                        IndexIdentifier id = new IndexIdentifier(tableName, indexName);
+                        IndexBuilder builder = indexMap.computeIfAbsent(id, k ->
+                                new IndexBuilder(tableName, indexName, unique, indexType)
+                        );
+
+                        builder.addColumn(columnName);
+                    }
+                }
+            }
+
+            for (IndexBuilder builder : indexMap.values()) {
+                IndexMetadata index = builder.build();
+                TableMetadata table = metadata.getTable(builder.tableName);
+
+                if (table != null) {
+                    table.addIndex(index);
+                }
+            }
+
+            return indexMap.size();
+        });
+
+        long duration = System.currentTimeMillis() - startTime;
+        log.debug("Extracted {} indexes in {}ms", count, duration);
+        progressListener.onPhaseComplete(phase, count, duration);
+    }
+
+    private void validateMetadata(DatabaseMetadata metadata) {
+        log.debug("Validating extracted metadata");
+
+        int issues = 0;
+
+        for (TableMetadata table : metadata.getTables().values()) {
+            if (table.getColumns().isEmpty()) {
+                log.warn("Table {} has no columns", table.getName());
+                issues++;
+            }
+
+            for (ConstraintMetadata constraint : table.getConstraints()) {
+                if (CONSTRAINT_TYPE_FK.equals(constraint.getType())) {
+                    String refTable = constraint.getReferencedTable();
+                    if (refTable != null && metadata.getTable(refTable) == null) {
+                        log.warn("FK {} in table {} references non-existent table: {}",
+                                constraint.getName(), table.getName(), refTable);
+                        issues++;
+                    }
+                }
             }
         }
 
-        for (Map.Entry<String, IndexMetadata> entry : indexMap.entrySet()) {
-            String table = entry. getKey().split("\\|")[0];
-            TableMetadata tableMeta = metadata.getTable(table);
-            if (tableMeta != null) {
-                tableMeta.addIndex(entry. getValue());
-            }
+        if (issues > 0) {
+            log.warn("Metadata validation found {} potential issues", issues);
+        } else {
+            log.debug("Metadata validation passed");
         }
     }
+
+    private <T> T executeWithRetry(SQLCallable<T> callable) throws SQLException {
+        if (!enableRetry) {
+            return callable.call();
+        }
+
+        int attempt = 0;
+        SQLException lastException = null;
+
+        while (attempt < MAX_RETRIES) {
+            try {
+                return callable.call();
+            } catch (SQLException e) {
+                lastException = e;
+                attempt++;
+
+                if (!isRetryable(e) || attempt >= MAX_RETRIES) {
+                    throw e;
+                }
+
+                long backoffMs = 1000L * attempt;
+                log.warn("Retryable error on attempt {}/{}: {} - Retrying in {}ms",
+                        attempt, MAX_RETRIES, e.getMessage(), backoffMs);
+
+                try {
+                    Thread.sleep(backoffMs);
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                    throw new SQLException("Interrupted during retry backoff", ie);
+                }
+            }
+        }
+
+        throw lastException;
+    }
+
+    private boolean isRetryable(SQLException e) {
+        int errorCode = e.getErrorCode();
+
+        // Oracle-specific error codes
+        return errorCode == 60 ||     // Deadlock detected
+               errorCode == 8177 ||   // Can't serialize access
+               errorCode == 1013 ||   // User requested cancel
+               errorCode == 1089;     // Immediate shutdown in progress
+    }
+
+    private Integer getNullableInt(ResultSet rs, String columnName) {
+        try {
+            int value = rs.getInt(columnName);
+            return rs.wasNull() ? null : value;
+        } catch (SQLException e) {
+            return null;
+        }
+    }
+
+    private int countIndexes(DatabaseMetadata metadata) {
+        return metadata.getTables().values().stream()
+                .mapToInt(t -> t.getIndexes().size())
+                .sum();
+    }
+
+    private int countConstraints(DatabaseMetadata metadata) {
+        return metadata.getTables().values().stream()
+                .mapToInt(t -> t.getConstraints().size())
+                .sum();
+    }
+
+    @FunctionalInterface
+    private interface SQLCallable<V> {
+        V call() throws SQLException;
+    }
+
+    private static class NoOpProgress implements ExtractionProgress {
+        @Override public void onPhaseStart(String phase) {}
+        @Override public void onPhaseComplete(String phase, int itemsProcessed, long durationMs) {}
+        @Override public void onWarning(String message) {}
+    }
+
+    private record ForeignKeyIdentifier(String tableName, String constraintName) {}
+
+    private static class ForeignKeyBuilder {
+        final String tableName;
+        final String constraintName;
+        final String refTableName;
+        final String updateRule;
+        final String deleteRule;
+        final List<String> columns = new ArrayList<>();
+        final List<String> refColumns = new ArrayList<>();
+
+        ForeignKeyBuilder(String tableName, String constraintName, String refTableName,
+                          String updateRule, String deleteRule) {
+            this.tableName = tableName;
+            this.constraintName = constraintName;
+            this.refTableName = refTableName;
+            this.updateRule = updateRule;
+            this.deleteRule = deleteRule;
+        }
+
+        void addColumn(String column, String refColumn) {
+            columns.add(column);
+            refColumns.add(refColumn);
+        }
+
+        ConstraintMetadata build() {
+            ConstraintMetadata fk = new ConstraintMetadata(
+                    CONSTRAINT_TYPE_FK,
+                    constraintName,
+                    columns,
+                    null
+            );
+            fk.setReferencedTable(refTableName);
+            fk.setReferencedColumns(refColumns);
+            fk.setUpdateRule(updateRule);
+            fk.setDeleteRule(deleteRule);
+            return fk;
+        }
+    }
+
+    private record IndexIdentifier(String tableName, String indexName) {}
+
+    private static class IndexBuilder {
+        final String tableName;
+        final String indexName;
+        final boolean unique;
+        final String indexType;
+        final List<String> columns = new ArrayList<>();
+
+        IndexBuilder(String tableName, String indexName, boolean unique, String indexType) {
+            this.tableName = tableName;
+            this.indexName = indexName;
+            this.unique = unique;
+            this.indexType = indexType;
+        }
+
+        void addColumn(String column) {
+            columns.add(column);
+        }
+
+        IndexMetadata build() {
+            IndexMetadata index = new IndexMetadata(indexName, columns, unique);
+            String normalizedType = indexType != null ? indexType : "NORMAL";
+            index.setIndexType(normalizedType);
+            return index;
+        }
+    }
+
+    private record ConstraintIdentifier(String tableName, String constraintName) {}
 }
+
