@@ -48,7 +48,19 @@ public class PostgresExtractorTest {
         assertNotNull(metadata);
 
         // Verify that expected queries were executed (roughly)
-        // Tables, Columns, Constraints (PK, FK, Check, Unique), Indexes
-        verify(connection, atLeast(4)).prepareStatement(anyString());
+        // Tables, Columns, Constraints (PK, FK, Check, Unique), Indexes, Sequences, Functions, Triggers
+        verify(connection, atLeast(7)).prepareStatement(anyString());
+    }
+
+    @Test
+    public void testExtractWithSequencesFunctionsAndTriggers() throws SQLException {
+        // Mock result sets to return empty to avoid infinite loops
+        when(resultSet.next()).thenReturn(false);
+
+        DatabaseMetadata metadata = extractor.extract(connection);
+        assertNotNull(metadata);
+        assertNotNull(metadata.getSequences());
+        assertNotNull(metadata.getFunctions());
+        assertNotNull(metadata.getTriggers());
     }
 }

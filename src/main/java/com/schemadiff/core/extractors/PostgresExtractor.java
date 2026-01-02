@@ -80,13 +80,17 @@ public class PostgresExtractor extends MetadataExtractor {
             extractColumns(conn, metadata);
             extractConstraints(conn, metadata);
             extractIndexes(conn, metadata);
+            extractSequences(conn, metadata);
+            extractFunctions(conn, metadata);
+            extractTriggers(conn, metadata);
 
             validateMetadata(metadata);
             conn.commit();
 
             long duration = System.currentTimeMillis() - startTime;
-            log.info("Schema extraction completed successfully in {}ms - Tables: {}, Indexes: {}, Constraints: {}",
-                    duration, metadata.getTables().size(), countIndexes(metadata), countConstraints(metadata));
+            log.info("Schema extraction completed successfully in {}ms - Tables: {}, Indexes: {}, Constraints: {}, Sequences: {}, Functions: {}, Triggers: {}",
+                    duration, metadata.getTables().size(), countIndexes(metadata), countConstraints(metadata),
+                    metadata.getSequences().size(), metadata.getFunctions().size(), metadata.getTriggers().size());
 
             return metadata;
 
@@ -659,6 +663,205 @@ public class PostgresExtractor extends MetadataExtractor {
         progressListener.onPhaseComplete(phase, count, duration);
     }
 
+    private void extractSequences(Connection conn, DatabaseMetadata metadata) throws SQLException {
+        String phase = "Sequences";
+        progressListener.onPhaseStart(phase);
+        long startTime = System.currentTimeMillis();
+
+        log.debug("Extracting sequences");
+
+        String query = """
+            SELECT
+                s.sequence_name,
+                s.data_type,
+                s.start_value,
+                s.increment,
+                s.minimum_value,
+                s.maximum_value,
+                s.cycle_option,
+                pg_get_serial_sequence(c.table_name, c.column_name) AS owned_by_seq,
+                c.table_name || '.' || c.column_name AS owned_by
+            FROM information_schema.sequences s
+            LEFT JOIN information_schema.columns c
+                ON s.sequence_schema = c.table_schema
+                AND pg_get_serial_sequence(c.table_name, c.column_name) = s.sequence_schema || '.' || s.sequence_name
+            WHERE s.sequence_schema = ?
+            ORDER BY s.sequence_name
+            """;
+
+        int count = executeWithRetry(() -> {
+            int seqCount = 0;
+
+            try (PreparedStatement stmt = conn.prepareStatement(query)) {
+                stmt.setQueryTimeout(QUERY_TIMEOUT_SECONDS);
+                stmt.setString(1, targetSchema);
+
+                try (ResultSet rs = stmt.executeQuery()) {
+                    while (rs.next()) {
+                        SequenceMetadata sequence = new SequenceMetadata();
+                        sequence.setName(rs.getString("sequence_name"));
+                        sequence.setDataType(rs.getString("data_type"));
+                        sequence.setStartValue(getLong(rs, "start_value"));
+                        sequence.setIncrementBy(getLong(rs, "increment"));
+                        sequence.setMinValue(getLong(rs, "minimum_value"));
+                        sequence.setMaxValue(getLong(rs, "maximum_value"));
+                        sequence.setCycle("YES".equalsIgnoreCase(rs.getString("cycle_option")));
+                        sequence.setOwnedBy(rs.getString("owned_by"));
+
+                        metadata.addSequence(sequence);
+                        seqCount++;
+
+                        log.trace("Extracted sequence: {}", sequence.getName());
+                    }
+                }
+            }
+
+            return seqCount;
+        });
+
+        long duration = System.currentTimeMillis() - startTime;
+        log.debug("Extracted {} sequences in {}ms", count, duration);
+        progressListener.onPhaseComplete(phase, count, duration);
+    }
+
+    private void extractFunctions(Connection conn, DatabaseMetadata metadata) throws SQLException {
+        String phase = "Functions";
+        progressListener.onPhaseStart(phase);
+        long startTime = System.currentTimeMillis();
+
+        log.debug("Extracting functions");
+
+        String query = """
+            SELECT
+                p.proname AS function_name,
+                n.nspname AS schema_name,
+                pg_get_function_result(p.oid) AS return_type,
+                l.lanname AS language,
+                pg_get_functiondef(p.oid) AS function_definition,
+                pg_get_function_arguments(p.oid) AS arguments,
+                CASE p.provolatile
+                    WHEN 'i' THEN 'IMMUTABLE'
+                    WHEN 's' THEN 'STABLE'
+                    WHEN 'v' THEN 'VOLATILE'
+                END AS volatility,
+                p.proisstrict AS is_strict,
+                CASE p.prosecdef
+                    WHEN true THEN 'DEFINER'
+                    ELSE 'INVOKER'
+                END AS security_type
+            FROM pg_proc p
+            JOIN pg_namespace n ON p.pronamespace = n.oid
+            JOIN pg_language l ON p.prolang = l.oid
+            WHERE n.nspname = ?
+            AND p.prokind IN ('f', 'p')  -- functions and procedures
+            ORDER BY p.proname, p.oid
+            """;
+
+        int count = executeWithRetry(() -> {
+            int funcCount = 0;
+
+            try (PreparedStatement stmt = conn.prepareStatement(query)) {
+                stmt.setQueryTimeout(QUERY_TIMEOUT_SECONDS);
+                stmt.setString(1, targetSchema);
+
+                try (ResultSet rs = stmt.executeQuery()) {
+                    while (rs.next()) {
+                        FunctionMetadata function = new FunctionMetadata();
+                        function.setName(rs.getString("function_name"));
+                        function.setSchema(rs.getString("schema_name"));
+                        function.setReturnType(rs.getString("return_type"));
+                        function.setLanguage(rs.getString("language"));
+                        function.setDefinition(rs.getString("function_definition"));
+                        function.setArguments(rs.getString("arguments"));
+                        function.setVolatility(rs.getString("volatility"));
+                        function.setIsStrict(rs.getBoolean("is_strict"));
+                        function.setSecurityType(rs.getString("security_type"));
+
+                        metadata.addFunction(function);
+                        funcCount++;
+
+                        log.trace("Extracted function: {}", function.getSignature());
+                    }
+                }
+            }
+
+            return funcCount;
+        });
+
+        long duration = System.currentTimeMillis() - startTime;
+        log.debug("Extracted {} functions in {}ms", count, duration);
+        progressListener.onPhaseComplete(phase, count, duration);
+    }
+
+    private void extractTriggers(Connection conn, DatabaseMetadata metadata) throws SQLException {
+        String phase = "Triggers";
+        progressListener.onPhaseStart(phase);
+        long startTime = System.currentTimeMillis();
+
+        log.debug("Extracting triggers");
+
+        String query = """
+            SELECT
+                t.tgname AS trigger_name,
+                c.relname AS table_name,
+                CASE t.tgtype & 2
+                    WHEN 2 THEN 'BEFORE'
+                    ELSE 'AFTER'
+                END AS timing,
+                CASE
+                    WHEN t.tgtype & 4 = 4 THEN 'INSERT'
+                    WHEN t.tgtype & 8 = 8 THEN 'DELETE'
+                    WHEN t.tgtype & 16 = 16 THEN 'UPDATE'
+                    ELSE 'UNKNOWN'
+                END AS event,
+                CASE t.tgtype & 1
+                    WHEN 1 THEN 'ROW'
+                    ELSE 'STATEMENT'
+                END AS level,
+                p.proname AS function_name,
+                pg_get_triggerdef(t.oid) AS trigger_def
+            FROM pg_trigger t
+            JOIN pg_class c ON t.tgrelid = c.oid
+            JOIN pg_namespace n ON c.relnamespace = n.oid
+            JOIN pg_proc p ON t.tgfoid = p.oid
+            WHERE n.nspname = ?
+            AND NOT t.tgisinternal
+            ORDER BY c.relname, t.tgname
+            """;
+
+        int count = executeWithRetry(() -> {
+            int triggerCount = 0;
+
+            try (PreparedStatement stmt = conn.prepareStatement(query)) {
+                stmt.setQueryTimeout(QUERY_TIMEOUT_SECONDS);
+                stmt.setString(1, targetSchema);
+
+                try (ResultSet rs = stmt.executeQuery()) {
+                    while (rs.next()) {
+                        TriggerMetadata trigger = new TriggerMetadata();
+                        trigger.setName(rs.getString("trigger_name"));
+                        trigger.setTableName(rs.getString("table_name"));
+                        trigger.setTiming(rs.getString("timing"));
+                        trigger.setEvent(rs.getString("event"));
+                        trigger.setLevel(rs.getString("level"));
+                        trigger.setFunctionName(rs.getString("function_name"));
+
+                        metadata.addTrigger(trigger);
+                        triggerCount++;
+
+                        log.trace("Extracted trigger: {} on table {}", trigger.getName(), trigger.getTableName());
+                    }
+                }
+            }
+
+            return triggerCount;
+        });
+
+        long duration = System.currentTimeMillis() - startTime;
+        log.debug("Extracted {} triggers in {}ms", count, duration);
+        progressListener.onPhaseComplete(phase, count, duration);
+    }
+
     private void validateMetadata(DatabaseMetadata metadata) {
         log.debug("Validating extracted metadata");
 
@@ -743,6 +946,15 @@ public class PostgresExtractor extends MetadataExtractor {
     private Integer getNullableInt(ResultSet rs, String columnName) {
         try {
             int value = rs.getInt(columnName);
+            return rs.wasNull() ? null : value;
+        } catch (SQLException e) {
+            return null;
+        }
+    }
+
+    private Long getLong(ResultSet rs, String columnName) {
+        try {
+            long value = rs.getLong(columnName);
             return rs.wasNull() ? null : value;
         } catch (SQLException e) {
             return null;
