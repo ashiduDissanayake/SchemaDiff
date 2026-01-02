@@ -270,7 +270,7 @@ public class MSSQLExtractor extends MetadataExtractor {
 
         baseType = baseType.toLowerCase().trim();
 
-        // Handle character types
+        // Handle character types with length
         if (baseType.contains("varchar") || baseType.contains("char")) {
             int maxLength = rs.getInt("max_length");
             if (maxLength == -1) {
@@ -281,17 +281,12 @@ public class MSSQLExtractor extends MetadataExtractor {
                 maxLength = maxLength / 2;
             }
             if (maxLength > 0) {
-                // Normalize type name
-                if (baseType.contains("varchar")) {
-                    return "varchar(" + maxLength + ")";
-                } else {
-                    return "char(" + maxLength + ")";
-                }
+                return baseType + "(" + maxLength + ")";
             }
-            return baseType.contains("varchar") ? "varchar" : "char";
+            return baseType;
         }
 
-        // Handle numeric types
+        // Handle numeric types with precision/scale
         if (baseType.equals("decimal") || baseType.equals("numeric")) {
             int precision = rs.getInt("precision");
             int scale = rs.getInt("scale");
@@ -303,26 +298,8 @@ public class MSSQLExtractor extends MetadataExtractor {
             }
         }
 
-        // Normalize MSSQL-specific types
-        return switch (baseType) {
-            case "int" -> "int";
-            case "bigint" -> "bigint";
-            case "smallint" -> "smallint";
-            case "tinyint" -> "tinyint";
-            case "bit" -> "boolean";
-            case "datetime", "datetime2", "smalldatetime" -> "timestamp";
-            case "date" -> "date";
-            case "time" -> "time";
-            case "text", "ntext" -> "text";
-            case "varbinary", "binary" -> "bytea";
-            case "image" -> "bytea";
-            case "uniqueidentifier" -> "uuid";
-            case "xml" -> "xml";
-            case "money", "smallmoney" -> "decimal";
-            case "real" -> "real";
-            case "float" -> "double precision";
-            default -> baseType;
-        };
+        // Return native MSSQL type as-is (no normalization)
+        return baseType;
     }
 
     private String normalizeDefault(String defaultValue) {

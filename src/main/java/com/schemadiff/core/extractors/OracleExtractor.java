@@ -7,6 +7,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.sql.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.*;
 
 /**
@@ -252,56 +254,52 @@ public class OracleExtractor extends MetadataExtractor {
         String baseType = rs.getString("data_type");
         if (baseType == null) return "unknown";
 
-        baseType = baseType.toLowerCase().trim();
+        baseType = baseType.toUpperCase().trim(); // Oracle types are typically uppercase
 
-        // Handle NUMBER type
-        if (baseType.equals("number")) {
+        // Handle NUMBER type with precision/scale
+        if (baseType.equals("NUMBER")) {
             Integer precision = getNullableInt(rs, "data_precision");
             Integer scale = getNullableInt(rs, "data_scale");
 
+            // If no precision specified, it's NUMBER (no params)
             if (precision == null) {
-                return "int";
+                return "NUMBER";
             }
 
+            // If scale is specified
             if (scale != null && scale > 0) {
-                return "numeric(" + precision + "," + scale + ")";
+                return "NUMBER(" + precision + "," + scale + ")";
             }
 
-            if (precision <= 10) {
-                return "int";
-            } else if (precision <= 19) {
-                return "bigint";
-            }
-            return "numeric(" + precision + ")";
+            // If only precision is specified
+            return "NUMBER(" + precision + ")";
         }
 
-        // Handle VARCHAR2 and CHAR types
-        if (baseType.equals("varchar2") || baseType.equals("char") ||
-            baseType.equals("nvarchar2") || baseType.equals("nchar")) {
+        // Handle VARCHAR2 and CHAR types with length
+        if (baseType.equals("VARCHAR2") || baseType.equals("NVARCHAR2")) {
             Integer length = getNullableInt(rs, "char_length");
             if (length == null) {
                 length = getNullableInt(rs, "data_length");
             }
             if (length != null && length > 0) {
-                return "varchar(" + length + ")";
+                return baseType + "(" + length + ")";
             }
-            return "varchar";
+            return baseType;
         }
 
-        // Normalize Oracle-specific types
-        return switch (baseType) {
-            case "clob", "nclob" -> "text";
-            case "blob" -> "bytea";
-            case "raw" -> "bytea";
-            case "long" -> "text";
-            case "date" -> "timestamp";
-            case "timestamp" -> "timestamp";
-            case "timestamp with time zone" -> "timestamptz";
-            case "timestamp with local time zone" -> "timestamp";
-            case "binary_float" -> "real";
-            case "binary_double" -> "double precision";
-            default -> baseType;
-        };
+        if (baseType.equals("CHAR") || baseType.equals("NCHAR")) {
+            Integer length = getNullableInt(rs, "char_length");
+            if (length == null) {
+                length = getNullableInt(rs, "data_length");
+            }
+            if (length != null && length > 0) {
+                return baseType + "(" + length + ")";
+            }
+            return baseType;
+        }
+
+        // Return native Oracle type as-is (no normalization)
+        return baseType;
     }
 
     private String normalizeDefault(String defaultValue) {
@@ -326,29 +324,52 @@ public class OracleExtractor extends MetadataExtractor {
     }
 
     private void detectAutoIncrementColumns(Connection conn, DatabaseMetadata metadata, String owner) {
+        // 1. SELECT without filtering the LONG column in the WHERE clause
         String query = """
-            SELECT t.table_name, t.trigger_body
-            FROM all_triggers t
-            WHERE t.owner = ?
-            AND t.trigger_type = 'BEFORE EACH ROW'
-            AND t.triggering_event LIKE '%INSERT%'
-            AND UPPER(t.trigger_body) LIKE '%NEXTVAL%'
-            """;
+        SELECT t.table_name, t.trigger_body
+        FROM all_triggers t
+        WHERE t.owner = ?
+        AND t.trigger_type = 'BEFORE EACH ROW'
+        AND t.triggering_event LIKE '%INSERT%'
+        """;
+
+        // 2. Compile Regex to find ":NEW.COLUMN_NAME" assignment
+        // Looks for: INTO :NEW.MY_COL_NAME
+        // Case insensitive, handles whitespace
+        Pattern columnPattern = Pattern.compile("INTO\\s+:NEW\\.([A-Za-z0-9_]+)", Pattern.CASE_INSENSITIVE);
 
         try (PreparedStatement stmt = conn.prepareStatement(query)) {
             stmt.setString(1, owner);
+
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
                     String tableName = rs.getString("table_name");
+
+                    // 3. Fetch the LONG column into Java memory
                     String triggerBody = rs.getString("trigger_body");
 
-                    TableMetadata table = metadata.getTable(tableName);
-                    if (table != null && triggerBody != null) {
-                        for (ColumnMetadata column : table.getColumns()) {
-                            if (triggerBody.toUpperCase().contains(":NEW." + column.getName().toUpperCase())) {
+                    if (triggerBody == null) continue;
+
+                    // 4. Clean and Standardize
+                    String upperBody = triggerBody.toUpperCase();
+
+                    // 5. Validation: Must contain 'NEXTVAL' to be a sequence trigger
+                    if (!upperBody.contains("NEXTVAL")) {
+                        continue;
+                    }
+
+                    // 6. Extraction: Use Regex to find exactly WHICH column is getting the ID
+                    Matcher matcher = columnPattern.matcher(upperBody);
+                    if (matcher.find()) {
+                        String targetColumnName = matcher.group(1); // The captured column name
+
+                        // 7. Update Metadata
+                        TableMetadata table = metadata.getTable(tableName);
+                        if (table != null) {
+                            ColumnMetadata column = table.getColumn(targetColumnName);
+                            if (column != null) {
                                 column.setAutoIncrement(true);
-                                log.debug("Detected auto-increment on {}.{} via trigger", tableName, column.getName());
-                                break;
+                                log.debug("Detected Oracle Auto-Increment: {}.{}", tableName, targetColumnName);
                             }
                         }
                     }
@@ -488,14 +509,14 @@ public class OracleExtractor extends MetadataExtractor {
     }
 
     private int extractCheckConstraints(Connection conn, DatabaseMetadata metadata, String owner) throws SQLException {
+        // 1. Remove the 'NOT LIKE' clause from SQL. It causes ORA-00932 on LONG columns.
         String query = """
-            SELECT c.table_name, c.constraint_name, c.search_condition
-            FROM all_constraints c
-            WHERE c.constraint_type = 'C'
-            AND c.owner = ?
-            AND c.search_condition NOT LIKE '%IS NOT NULL'
-            ORDER BY c.table_name, c.constraint_name
-            """;
+        SELECT c.table_name, c.constraint_name, c.search_condition
+        FROM all_constraints c
+        WHERE c.constraint_type = 'C'
+        AND c.owner = ?
+        ORDER BY c.table_name, c.constraint_name
+        """;
 
         return executeWithRetry(() -> {
             try (PreparedStatement stmt = conn.prepareStatement(query)) {
@@ -507,7 +528,21 @@ public class OracleExtractor extends MetadataExtractor {
                     while (rs.next()) {
                         String tableName = rs.getString("table_name");
                         String constraintName = rs.getString("constraint_name");
+
+                        // 2. Fetch the LONG column into Java memory
                         String searchCondition = rs.getString("search_condition");
+
+                        // 3. Perform the filtering in Java instead of SQL
+                        if (searchCondition == null || searchCondition.trim().isEmpty()) {
+                            continue;
+                        }
+
+                        // Oracle stores "NOT NULL" constraints as CHECK constraints.
+                        // We typically want to ignore these as they are handled by column nullability.
+                        String upperCondition = searchCondition.trim().toUpperCase();
+                        if (upperCondition.endsWith("IS NOT NULL")) {
+                            continue;
+                        }
 
                         TableMetadata table = metadata.getTable(tableName);
                         if (table != null) {
@@ -517,7 +552,7 @@ public class OracleExtractor extends MetadataExtractor {
                                     new ArrayList<>(),
                                     null
                             );
-                            check.setCheckClause(searchCondition != null ? searchCondition : "");
+                            check.setCheckClause(searchCondition);
                             check.setSignature(SignatureGenerator.generate(check));
                             table.addConstraint(check);
                             count++;

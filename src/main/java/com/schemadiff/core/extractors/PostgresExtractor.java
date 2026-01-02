@@ -271,24 +271,24 @@ public class PostgresExtractor extends MetadataExtractor {
         baseType = baseType.toLowerCase().trim();
         String udtName = rs.getString("udt_name");
 
-        // Handle character types
-        if (baseType.equals("character varying") || baseType.equals("varchar")) {
+        // Handle character types with length
+        if (baseType.equals("character varying")) {
             Integer length = getNullableInt(rs, "character_maximum_length");
             if (length != null && length > 0) {
-                return "varchar(" + length + ")";
+                return "character varying(" + length + ")";
             }
-            return "varchar";
+            return "character varying";
         }
 
         if (baseType.equals("character")) {
             Integer length = getNullableInt(rs, "character_maximum_length");
             if (length != null && length > 0) {
-                return "char(" + length + ")";
+                return "character(" + length + ")";
             }
-            return "char";
+            return "character";
         }
 
-        // Handle numeric types
+        // Handle numeric types with precision/scale
         if (baseType.equals("numeric") || baseType.equals("decimal")) {
             Integer precision = getNullableInt(rs, "numeric_precision");
             Integer scale = getNullableInt(rs, "numeric_scale");
@@ -300,29 +300,17 @@ public class PostgresExtractor extends MetadataExtractor {
             }
         }
 
-        // Normalize PostgreSQL-specific types
-        return switch (baseType) {
-            case "character varying" -> "varchar";
-            case "integer" -> "int";
-            case "bigint" -> "bigint";
-            case "smallint" -> "smallint";
-            case "timestamp without time zone" -> "timestamp";
-            case "timestamp with time zone" -> "timestamptz";
-            case "time without time zone" -> "time";
-            case "time with time zone" -> "timetz";
-            case "double precision" -> "double precision";
-            case "real" -> "real";
-            case "boolean" -> "boolean";
-            case "bytea" -> "bytea";
-            case "text" -> "text";
-            case "json" -> "json";
-            case "jsonb" -> "jsonb";
-            case "uuid" -> "uuid";
-            case "date" -> "date";
-            case "ARRAY" -> udtName != null ? udtName : "array";
-            case "USER-DEFINED" -> udtName != null ? udtName : "user-defined";
-            default -> baseType;
-        };
+        // Handle special PostgreSQL types - preserve native type names
+        if (baseType.equals("ARRAY") && udtName != null) {
+            return udtName;
+        }
+
+        if (baseType.equals("USER-DEFINED") && udtName != null) {
+            return udtName;
+        }
+
+        // Return the actual PostgreSQL type as-is (no normalization)
+        return baseType;
     }
 
     private String normalizeDefault(String defaultValue) {
