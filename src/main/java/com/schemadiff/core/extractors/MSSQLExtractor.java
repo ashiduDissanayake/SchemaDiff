@@ -17,6 +17,7 @@ import java.util.*;
  * - NVARCHAR, VARCHAR(MAX), and other MSSQL types
  * - Computed columns and default constraints
  * - Index types (CLUSTERED, NONCLUSTERED, COLUMNSTORE, etc.)
+ * - Triggers (AFTER, INSTEAD OF)
  */
 public class MSSQLExtractor extends MetadataExtractor {
 
@@ -78,6 +79,7 @@ public class MSSQLExtractor extends MetadataExtractor {
             extractColumns(conn, metadata);
             extractConstraints(conn, metadata);
             extractIndexes(conn, metadata);
+            extractTriggers(conn, metadata);
 
             validateMetadata(metadata);
             conn.commit();
@@ -724,6 +726,78 @@ public class MSSQLExtractor extends MetadataExtractor {
         return metadata.getTables().values().stream()
                 .mapToInt(t -> t.getConstraints().size())
                 .sum();
+    }
+
+    private void extractTriggers(Connection conn, DatabaseMetadata metadata) throws SQLException {
+        String phase = "Triggers";
+        progressListener.onPhaseStart(phase);
+        long startTime = System.currentTimeMillis();
+
+        log.debug("Extracting triggers for schema: {}", targetSchema);
+
+        String query = """
+            SELECT
+                t.name AS trigger_name,
+                OBJECT_NAME(t.parent_id) AS table_name,
+                CASE
+                    WHEN OBJECTPROPERTY(t.object_id, 'ExecIsInsteadOfTrigger') = 1 THEN 'INSTEAD OF'
+                    WHEN OBJECTPROPERTY(t.object_id, 'ExecIsAfterTrigger') = 1 THEN 'AFTER'
+                    ELSE 'UNKNOWN'
+                END AS timing,
+                CASE
+                    WHEN OBJECTPROPERTY(t.object_id, 'ExecIsInsertTrigger') = 1 THEN 'INSERT'
+                    WHEN OBJECTPROPERTY(t.object_id, 'ExecIsUpdateTrigger') = 1 THEN 'UPDATE'
+                    WHEN OBJECTPROPERTY(t.object_id, 'ExecIsDeleteTrigger') = 1 THEN 'DELETE'
+                    ELSE 'UNKNOWN'
+                END AS event,
+                'ROW' AS level,
+                OBJECT_DEFINITION(t.object_id) AS definition
+            FROM sys.triggers t
+            INNER JOIN sys.tables tb ON t.parent_id = tb.object_id
+            INNER JOIN sys.schemas s ON tb.schema_id = s.schema_id
+            WHERE s.name = ?
+            AND t.is_disabled = 0
+            ORDER BY table_name, trigger_name
+            """;
+
+        int count = executeWithRetry(() -> {
+            int triggerCount = 0;
+
+            try (PreparedStatement stmt = conn.prepareStatement(query)) {
+                stmt.setQueryTimeout(QUERY_TIMEOUT_SECONDS);
+                stmt.setString(1, targetSchema);
+
+                try (ResultSet rs = stmt.executeQuery()) {
+                    while (rs.next()) {
+                        TriggerMetadata trigger = new TriggerMetadata();
+                        trigger.setName(rs.getString("trigger_name"));
+                        trigger.setTableName(rs.getString("table_name"));
+                        trigger.setTiming(rs.getString("timing"));
+                        trigger.setEvent(rs.getString("event"));
+                        trigger.setLevel(rs.getString("level"));
+
+                        // For MSSQL, we store the full definition instead of a function name
+                        String definition = rs.getString("definition");
+                        if (definition != null) {
+                            // Clean up the definition - remove extra whitespace
+                            definition = definition.replaceAll("\\s+", " ").trim();
+                            trigger.setFunctionName(definition.substring(0, Math.min(200, definition.length())));
+                        }
+
+                        metadata.addTrigger(trigger);
+                        triggerCount++;
+
+                        log.trace("Extracted trigger: {} on table {}", trigger.getName(), trigger.getTableName());
+                    }
+                }
+            }
+
+            return triggerCount;
+        });
+
+        long duration = System.currentTimeMillis() - startTime;
+        log.debug("Extracted {} triggers in {}ms", count, duration);
+        progressListener.onPhaseComplete(phase, count, duration);
     }
 
     @FunctionalInterface

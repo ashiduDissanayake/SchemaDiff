@@ -88,6 +88,7 @@ public class SQLProvisioner {
 
     /**
      * Parse SQL into individual statements, handling:
+     * - GO batch separator (MSSQL)
      * - Dollar quotes ($$...$$) in PostgreSQL functions
      * - Single quotes ('...')
      * - Double quotes ("...")
@@ -125,6 +126,47 @@ public class SQLProvisioner {
                     i++;
                 }
                 continue;
+            }
+
+            // Handle GO batch separator (MSSQL) - must be on its own line
+            if ((c == 'G' || c == 'g') && i + 1 < length &&
+                (sql.charAt(i + 1) == 'O' || sql.charAt(i + 1) == 'o')) {
+                // Check if GO is at start of line (or only whitespace before it)
+                boolean isStartOfLine = true;
+                for (int j = i - 1; j >= 0; j--) {
+                    char prev = sql.charAt(j);
+                    if (prev == '\n' || prev == '\r') {
+                        break;
+                    }
+                    if (!Character.isWhitespace(prev)) {
+                        isStartOfLine = false;
+                        break;
+                    }
+                }
+
+                // Check if GO is followed by whitespace or end of line
+                boolean isEndOfLine = true;
+                if (i + 2 < length) {
+                    char next = sql.charAt(i + 2);
+                    if (!Character.isWhitespace(next) && next != ';') {
+                        isEndOfLine = false;
+                    }
+                }
+
+                if (isStartOfLine && isEndOfLine) {
+                    // Found GO separator - finish current statement
+                    String stmt = current.toString().trim();
+                    if (!stmt.isEmpty()) {
+                        statements.add(stmt);
+                    }
+                    current.setLength(0);
+                    // Skip GO and any whitespace after it
+                    i += 2;
+                    while (i < length && Character.isWhitespace(sql.charAt(i)) && sql.charAt(i) != '\n') {
+                        i++;
+                    }
+                    continue;
+                }
             }
 
             // Handle dollar quotes (PostgreSQL)

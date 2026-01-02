@@ -3,6 +3,7 @@ package com.schemadiff.container;
 import com.schemadiff.model.DatabaseType;
 import com.schemadiff.util.JDBCHelper;
 import org.testcontainers.containers.*;
+import org.testcontainers.utility.DockerImageName;
 
 import java.sql.Connection;
 
@@ -30,7 +31,12 @@ public class ContainerManager {
                     );
                 yield mysql;
             }
-            case ORACLE -> new OracleContainer(image).withReuse(false);
+            case ORACLE -> {
+                // Support both oracle-xe and oracle-free images
+                DockerImageName oracleImage = DockerImageName.parse(image)
+                        .asCompatibleSubstituteFor("gvenzl/oracle-xe");
+                yield new OracleContainer(oracleImage).withReuse(false);
+            }
             case MSSQL -> new MSSQLServerContainer<>(image).acceptLicense();
             case DB2 -> new Db2Container(image).acceptLicense();
         };

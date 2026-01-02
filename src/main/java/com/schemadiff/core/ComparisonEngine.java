@@ -56,7 +56,7 @@ public class ComparisonEngine {
                 } else {
                     List<String> diffs = new ArrayList<>();
 
-                    if (!TypeNormalizer.typesMatch(refCol.getDataType(), targetCol.getDataType())) {
+                    if (!refCol.getDataType().equalsIgnoreCase(targetCol.getDataType())) {
                         diffs.add("Type mismatch: " + refCol.getDataType() + " != " + targetCol.getDataType());
                     }
 

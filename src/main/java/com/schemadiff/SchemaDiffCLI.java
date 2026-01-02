@@ -141,8 +141,44 @@ public class SchemaDiffCLI implements Callable<Integer> {
     }
 
     public static void main(String[] args) {
+        // Suppress JDBC driver warnings (MSSQL prelogin, etc.)
+        suppressJDBCWarnings();
+
         int exitCode = new CommandLine(new SchemaDiffCLI()).execute(args);
         System.exit(exitCode);
+    }
+
+    /**
+     * Suppress verbose JDBC driver warnings for production use.
+     * Specifically suppresses MSSQL prelogin warnings and other connection-related noise.
+     */
+    private static void suppressJDBCWarnings() {
+        try {
+            // Try to load logging configuration from properties file
+            try (var is = SchemaDiffCLI.class.getClassLoader().getResourceAsStream("logging.properties")) {
+                if (is != null) {
+                    java.util.logging.LogManager.getLogManager().readConfiguration(is);
+                }
+            } catch (Exception e) {
+                // Fallback to programmatic configuration
+            }
+
+            // Programmatically suppress MSSQL JDBC driver warnings (prelogin errors during container startup)
+            java.util.logging.Logger.getLogger("com.microsoft.sqlserver.jdbc").setLevel(java.util.logging.Level.OFF);
+            java.util.logging.Logger.getLogger("com.microsoft.sqlserver.jdbc.SQLServerConnection").setLevel(java.util.logging.Level.OFF);
+            java.util.logging.Logger.getLogger("com.microsoft.sqlserver.jdbc.internals").setLevel(java.util.logging.Level.OFF);
+
+            // Suppress Oracle JDBC driver verbose logging
+            java.util.logging.Logger.getLogger("oracle.jdbc").setLevel(java.util.logging.Level.SEVERE);
+            java.util.logging.Logger.getLogger("oracle.jdbc.driver").setLevel(java.util.logging.Level.SEVERE);
+            java.util.logging.Logger.getLogger("oracle.net").setLevel(java.util.logging.Level.SEVERE);
+            java.util.logging.Logger.getLogger("oracle.net.ns").setLevel(java.util.logging.Level.SEVERE);
+
+            // Suppress Testcontainers verbose logging
+            java.util.logging.Logger.getLogger("org.testcontainers").setLevel(java.util.logging.Level.WARNING);
+        } catch (Exception e) {
+            // Silently ignore if logging configuration fails
+        }
     }
 
 }
