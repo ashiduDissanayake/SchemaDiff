@@ -407,27 +407,29 @@ public class PostgresExtractor extends MetadataExtractor {
 
     private int extractForeignKeys(Connection conn, DatabaseMetadata metadata) throws SQLException {
         String query = """
-            SELECT
+            
+                SELECT
                 tc.table_name,
                 tc.constraint_name,
                 kcu.column_name,
                 kcu.ordinal_position,
-                ccu.table_name AS foreign_table_name,
-                ccu.column_name AS foreign_column_name,
+                kcu_target.table_name AS foreign_table_name,
+                kcu_target.column_name AS foreign_column_name,
                 rc.update_rule,
                 rc.delete_rule
             FROM information_schema.table_constraints tc
-            JOIN information_schema.key_column_usage kcu
-                ON tc.constraint_name = kcu.constraint_name
-                AND tc.table_schema = kcu.table_schema
-            JOIN information_schema.constraint_column_usage ccu
-                ON ccu.constraint_name = tc.constraint_name
-                AND ccu.table_schema = tc.table_schema
-            JOIN information_schema.referential_constraints rc
-                ON rc.constraint_name = tc.constraint_name
-                AND rc.constraint_schema = tc.table_schema
+                     JOIN information_schema.referential_constraints rc
+                          ON tc.constraint_name = rc.constraint_name
+                              AND tc.constraint_schema = rc.constraint_schema
+                     JOIN information_schema.key_column_usage kcu
+                          ON kcu.constraint_name = tc.constraint_name
+                              AND kcu.constraint_schema = tc.constraint_schema
+                     JOIN information_schema.key_column_usage kcu_target
+                          ON kcu_target.constraint_name = rc.unique_constraint_name
+                              AND kcu_target.constraint_schema = rc.unique_constraint_schema
+                              AND kcu.position_in_unique_constraint = kcu_target.ordinal_position
             WHERE tc.constraint_type = 'FOREIGN KEY'
-            AND tc.table_schema = ?
+              AND tc.table_schema = ?
             ORDER BY tc.table_name, tc.constraint_name, kcu.ordinal_position
             """;
 
