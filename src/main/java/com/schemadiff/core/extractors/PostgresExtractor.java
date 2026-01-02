@@ -181,25 +181,27 @@ public class PostgresExtractor extends MetadataExtractor {
 
         log.debug("Extracting columns");
 
+        // UPDATED QUERY: Added 'c.is_identity' to the SELECT list
         String query = """
-            SELECT
-                c.table_name,
-                c.column_name,
-                c.ordinal_position,
-                c.data_type,
-                c.character_maximum_length,
-                c.numeric_precision,
-                c.numeric_scale,
-                c.is_nullable,
-                c.column_default,
-                c.udt_name,
-                pgd.description AS column_comment
-            FROM information_schema.columns c
-            LEFT JOIN pg_catalog.pg_statio_all_tables st ON c.table_schema = st.schemaname AND c.table_name = st.relname
-            LEFT JOIN pg_catalog.pg_description pgd ON pgd.objoid = st.relid AND pgd.objsubid = c.ordinal_position
-            WHERE c.table_schema = ?
-            ORDER BY c.table_name, c.ordinal_position
-            """;
+        SELECT
+            c.table_name,
+            c.column_name,
+            c.ordinal_position,
+            c.data_type,
+            c.character_maximum_length,
+            c.numeric_precision,
+            c.numeric_scale,
+            c.is_nullable,
+            c.column_default,
+            c.is_identity,
+            c.udt_name,
+            pgd.description AS column_comment
+        FROM information_schema.columns c
+        LEFT JOIN pg_catalog.pg_statio_all_tables st ON c.table_schema = st.schemaname AND c.table_name = st.relname
+        LEFT JOIN pg_catalog.pg_description pgd ON pgd.objoid = st.relid AND pgd.objsubid = c.ordinal_position
+        WHERE c.table_schema = ?
+        ORDER BY c.table_name, c.ordinal_position
+        """;
 
         int count = executeWithRetry(() -> {
             try (PreparedStatement stmt = conn.prepareStatement(query)) {
@@ -228,11 +230,22 @@ public class PostgresExtractor extends MetadataExtractor {
                         String comment = rs.getString("column_comment");
                         column.setComment(comment != null ? comment : "");
 
-                        // Detect auto-increment (SERIAL/BIGSERIAL)
+                        // UPDATED LOGIC: Detect auto-increment (Identity OR Serial)
                         String colDefault = rs.getString("column_default");
-                        if (colDefault != null && colDefault.contains("nextval")) {
-                            column.setAutoIncrement(true);
+                        String isIdentity = rs.getString("is_identity");
+
+                        boolean isAutoInc = false;
+
+                        // Check 1: Modern Postgres Identity Column (GENERATED AS IDENTITY)
+                        if ("YES".equalsIgnoreCase(isIdentity)) {
+                            isAutoInc = true;
                         }
+                        // Check 2: Legacy Postgres Serial (DEFAULT nextval(...))
+                        else if (colDefault != null && colDefault.contains("nextval")) {
+                            isAutoInc = true;
+                        }
+
+                        column.setAutoIncrement(isAutoInc);
 
                         table.addColumn(column);
                         columnCount++;
