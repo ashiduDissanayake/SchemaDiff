@@ -46,8 +46,7 @@ public class SchemaDiffCLI implements Callable<Integer> {
 
     @Override
     public Integer call() throws Exception {
-        ContainerManager refContainer = null;
-        ContainerManager targetContainer = null;
+        ContainerManager sharedContainer = null;
 
         try {
             DatabaseType type = DatabaseType.fromString(dbType);
@@ -56,35 +55,61 @@ public class SchemaDiffCLI implements Callable<Integer> {
             ComparisonMode mode = detectMode(reference, target);
             System.out.println("Mode: " + mode);
 
-            // Extract reference metadata
             DatabaseMetadata refMetadata;
-            if (isScript(reference)) {
-                validateDockerImage();
-                refContainer = new ContainerManager(dockerImage, type);
-                refContainer.start();
-                try (Connection conn = refContainer.getConnection()) {
-                    new SQLProvisioner(conn).execute(new File(reference));
-                    refMetadata = extractMetadata(conn, type);
-                }
-            } else {
-                try (Connection conn = JDBCHelper.connect(reference, refUser, refPass)) {
-                    refMetadata = extractMetadata(conn, type);
-                }
-            }
-
-            // Extract target metadata
             DatabaseMetadata targetMetadata;
-            if (isScript(target)) {
+
+            // Optimized: Use single container for Script vs Script mode
+            if (mode == ComparisonMode.SCRIPT_VS_SCRIPT) {
                 validateDockerImage();
-                targetContainer = new ContainerManager(dockerImage, type);
-                targetContainer.start();
-                try (Connection conn = targetContainer.getConnection()) {
-                    new SQLProvisioner(conn).execute(new File(target));
-                    targetMetadata = extractMetadata(conn, type);
+
+                // Single container, two databases
+                sharedContainer = ContainerManager.getOrCreate(dockerImage, type);
+
+                // Create reference database and provision schema
+                System.out.println("Provisioning reference schema...");
+                try (Connection refConn = sharedContainer.createDatabaseAndConnect("schemadiff_ref")) {
+                    new SQLProvisioner(refConn).execute(new File(reference));
+                    refMetadata = extractMetadata(refConn, type);
                 }
+
+                // Create target database and provision schema
+                System.out.println("Provisioning target schema...");
+                try (Connection targetConn = sharedContainer.createDatabaseAndConnect("schemadiff_target")) {
+                    new SQLProvisioner(targetConn).execute(new File(target));
+                    targetMetadata = extractMetadata(targetConn, type);
+                }
+
             } else {
-                try (Connection conn = JDBCHelper.connect(target, targetUser, targetPass)) {
-                    targetMetadata = extractMetadata(conn, type);
+                // Other modes: Script vs Live, Live vs Script, Live vs Live
+
+                // Extract reference metadata
+                if (isScript(reference)) {
+                    validateDockerImage();
+                    sharedContainer = ContainerManager.getOrCreate(dockerImage, type);
+                    try (Connection conn = sharedContainer.createDatabaseAndConnect("schemadiff_ref")) {
+                        new SQLProvisioner(conn).execute(new File(reference));
+                        refMetadata = extractMetadata(conn, type);
+                    }
+                } else {
+                    try (Connection conn = JDBCHelper.connect(reference, refUser, refPass)) {
+                        refMetadata = extractMetadata(conn, type);
+                    }
+                }
+
+                // Extract target metadata
+                if (isScript(target)) {
+                    validateDockerImage();
+                    if (sharedContainer == null) {
+                        sharedContainer = ContainerManager.getOrCreate(dockerImage, type);
+                    }
+                    try (Connection conn = sharedContainer.createDatabaseAndConnect("schemadiff_target")) {
+                        new SQLProvisioner(conn).execute(new File(target));
+                        targetMetadata = extractMetadata(conn, type);
+                    }
+                } else {
+                    try (Connection conn = JDBCHelper.connect(target, targetUser, targetPass)) {
+                        targetMetadata = extractMetadata(conn, type);
+                    }
                 }
             }
 
@@ -104,8 +129,13 @@ public class SchemaDiffCLI implements Callable<Integer> {
             e.printStackTrace();
             return 2;
         } finally {
-            if (refContainer != null) refContainer.stop();
-            if (targetContainer != null) targetContainer.stop();
+            // Cleanup: drop the temporary databases
+            if (sharedContainer != null) {
+                sharedContainer.dropDatabase("schemadiff_ref");
+                sharedContainer.dropDatabase("schemadiff_target");
+                // Note: Container itself is cached and will be reused or cleaned up at JVM shutdown
+                // For explicit cleanup, call ContainerManager.stopAll()
+            }
         }
     }
 
