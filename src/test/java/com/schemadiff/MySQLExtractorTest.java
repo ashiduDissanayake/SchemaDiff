@@ -9,6 +9,7 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
 import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.Statement;
 import java.util.List;
@@ -20,10 +21,22 @@ import static org.mockito.Mockito.when;
 
 public class MySQLExtractorTest {
 
+    private void setupMockDatabaseMetaData(Connection mockConn) throws Exception {
+        java.sql.DatabaseMetaData mockMetaData = mock(java.sql.DatabaseMetaData.class);
+        when(mockConn.getMetaData()).thenReturn(mockMetaData);
+        when(mockMetaData.getDatabaseMajorVersion()).thenReturn(8);
+        when(mockMetaData.getDatabaseMinorVersion()).thenReturn(0);
+        when(mockMetaData.getDatabaseProductName()).thenReturn("MySQL");
+        when(mockConn.getCatalog()).thenReturn("test_db");
+    }
+
     @Test
     public void testMultipleForeignKeysSameTablePair() throws Exception {
         Connection mockConn = mock(Connection.class);
+        setupMockDatabaseMetaData(mockConn);
+
         Statement mockStmt = mock(Statement.class);
+        PreparedStatement mockPrepStmt = mock(PreparedStatement.class);
         ResultSet mockRsTables = mock(ResultSet.class);
         ResultSet mockRsColumns = mock(ResultSet.class);
         ResultSet mockRsPKs = mock(ResultSet.class);
@@ -31,9 +44,10 @@ public class MySQLExtractorTest {
         ResultSet mockRsIndexes = mock(ResultSet.class);
 
         when(mockConn.createStatement()).thenReturn(mockStmt);
+        when(mockConn.prepareStatement(anyString())).thenReturn(mockPrepStmt);
 
         // Mock Tables
-        when(mockStmt.executeQuery(anyString()))
+        when(mockPrepStmt.executeQuery())
                 .thenReturn(mockRsTables)
                 .thenReturn(mockRsColumns)
                 .thenReturn(mockRsPKs)
@@ -69,11 +83,14 @@ public class MySQLExtractorTest {
         when(mockRsFKs.getString("TABLE_NAME")).thenReturn("orders", "orders");
         when(mockRsFKs.getString("COLUMN_NAME")).thenReturn("user_id", "creator_id");
         when(mockRsFKs.getString("REFERENCED_TABLE_NAME")).thenReturn("users", "users");
+        when(mockRsFKs.getString("REFERENCED_COLUMN_NAME")).thenReturn("id", "id");
+        when(mockRsFKs.getString("UPDATE_RULE")).thenReturn("RESTRICT", "RESTRICT");
+        when(mockRsFKs.getString("DELETE_RULE")).thenReturn("CASCADE", "CASCADE");
 
         // Indexes
         when(mockRsIndexes.next()).thenReturn(false);
 
-        MySQLExtractor extractor = new MySQLExtractor();
+        MySQLExtractor extractor = new MySQLExtractor("test_db");
         DatabaseMetadata metadata = extractor.extract(mockConn);
 
         TableMetadata ordersTable = metadata.getTable("orders");
@@ -91,7 +108,10 @@ public class MySQLExtractorTest {
     @Test
     public void testUnsignedColumn() throws Exception {
         Connection mockConn = mock(Connection.class);
+        setupMockDatabaseMetaData(mockConn);
+
         Statement mockStmt = mock(Statement.class);
+        PreparedStatement mockPrepStmt = mock(PreparedStatement.class);
         ResultSet mockRsTables = mock(ResultSet.class);
         ResultSet mockRsColumns = mock(ResultSet.class);
         ResultSet mockRsPKs = mock(ResultSet.class);
@@ -99,9 +119,10 @@ public class MySQLExtractorTest {
         ResultSet mockRsIndexes = mock(ResultSet.class);
 
         when(mockConn.createStatement()).thenReturn(mockStmt);
+        when(mockConn.prepareStatement(anyString())).thenReturn(mockPrepStmt);
 
         // Mock Tables
-        when(mockStmt.executeQuery(anyString()))
+        when(mockPrepStmt.executeQuery())
                 .thenReturn(mockRsTables)
                 .thenReturn(mockRsColumns)
                 .thenReturn(mockRsPKs)
@@ -147,41 +168,40 @@ public class MySQLExtractorTest {
         when(mockRsFKs.next()).thenReturn(false);
         when(mockRsIndexes.next()).thenReturn(false);
 
-        MySQLExtractor extractor = new MySQLExtractor();
+        MySQLExtractor extractor = new MySQLExtractor("test_db");
         DatabaseMetadata metadata = extractor.extract(mockConn);
 
         TableMetadata usersTable = metadata.getTable("users");
         List<com.schemadiff.model.ColumnMetadata> columns = usersTable.getColumns();
 
         assertEquals(1, columns.size());
-        // We expect the type to include "unsigned" if the extractor supports it.
-        // Currently, it uses DATA_TYPE ("int") and precision (10), so it produces "int(10)".
-        // If it misses "unsigned", this test will fail if we assert "int(10) unsigned".
-        // Let's assert what we WANT it to be.
-        String expectedType = "int(10) unsigned";
-        // Or at least "int unsigned". The precision handling in `buildDataType` appends `(10)`.
 
-        // Note: buildDataType currently appends precision if available.
-        // If DATA_TYPE is used, it returns "int". Precision is 10. So "int(10)".
-        // It does not check for unsigned.
-
-        assertEquals("int(10) unsigned", columns.get(0).getDataType());
+        com.schemadiff.model.ColumnMetadata col = columns.get(0);
+        assertEquals("int(10)", col.getDataType());
+        assertEquals(true, col.isUnsigned());
     }
 
     @Test
     public void testCommonDataTypes() throws Exception {
         // Setup mocks
         Connection mockConn = mock(Connection.class);
+        setupMockDatabaseMetaData(mockConn);
+
         Statement mockStmt = mock(Statement.class);
+        PreparedStatement mockPrepStmt = mock(PreparedStatement.class);
         ResultSet mockRsTables = mock(ResultSet.class);
         ResultSet mockRsColumns = mock(ResultSet.class);
 
         when(mockConn.createStatement()).thenReturn(mockStmt);
-        when(mockStmt.executeQuery(anyString()))
+        when(mockConn.prepareStatement(anyString())).thenReturn(mockPrepStmt);
+
+        when(mockPrepStmt.executeQuery())
                 .thenReturn(mockRsTables)
                 .thenReturn(mockRsColumns)
                 .thenReturn(mock(ResultSet.class)) // PKs
                 .thenReturn(mock(ResultSet.class)) // FKs
+                .thenReturn(mock(ResultSet.class)) // CheckConstraints
+                .thenReturn(mock(ResultSet.class)) // UniqueConstraints
                 .thenReturn(mock(ResultSet.class)); // Indexes
 
         // Table
@@ -236,7 +256,7 @@ public class MySQLExtractorTest {
         when(mockRsColumns.getString("IS_NULLABLE")).thenReturn("YES");
         when(mockRsColumns.getString("COLUMN_DEFAULT")).thenReturn(null);
 
-        MySQLExtractor extractor = new MySQLExtractor();
+        MySQLExtractor extractor = new MySQLExtractor("test_db");
         DatabaseMetadata metadata = extractor.extract(mockConn);
         TableMetadata table = metadata.getTable("types_table");
 
@@ -253,16 +273,23 @@ public class MySQLExtractorTest {
     @Test
     public void testPrimaryKeys() throws Exception {
         Connection mockConn = mock(Connection.class);
+        setupMockDatabaseMetaData(mockConn);
+
         Statement mockStmt = mock(Statement.class);
+        PreparedStatement mockPrepStmt = mock(PreparedStatement.class);
         ResultSet mockRsTables = mock(ResultSet.class);
         ResultSet mockRsPKs = mock(ResultSet.class);
 
         when(mockConn.createStatement()).thenReturn(mockStmt);
-        when(mockStmt.executeQuery(anyString()))
+        when(mockConn.prepareStatement(anyString())).thenReturn(mockPrepStmt);
+
+        when(mockPrepStmt.executeQuery())
                 .thenReturn(mockRsTables)
                 .thenReturn(mock(ResultSet.class)) // Columns
                 .thenReturn(mockRsPKs)
                 .thenReturn(mock(ResultSet.class)) // FKs
+                .thenReturn(mock(ResultSet.class)) // CheckConstraints
+                .thenReturn(mock(ResultSet.class)) // UniqueConstraints
                 .thenReturn(mock(ResultSet.class)); // Indexes
 
         when(mockRsTables.next()).thenReturn(true).thenReturn(false);
@@ -274,32 +301,39 @@ public class MySQLExtractorTest {
         when(mockRsPKs.getString("TABLE_NAME")).thenReturn("users");
         when(mockRsPKs.getString("COLUMN_NAME")).thenReturn("id", "org_id");
 
-        MySQLExtractor extractor = new MySQLExtractor();
+        MySQLExtractor extractor = new MySQLExtractor("test_db");
         DatabaseMetadata metadata = extractor.extract(mockConn);
         TableMetadata table = metadata.getTable("users");
 
         List<ConstraintMetadata> constraints = table.getConstraints();
-        // Constraint type for PK is "PRIMARY" in MySQLExtractor
-        long pkCount = constraints.stream().filter(c -> "PRIMARY".equals(c.getType())).count();
+        // Constraint type for PK is "PRIMARY_KEY" in MySQLExtractor
+        long pkCount = constraints.stream().filter(c -> "PRIMARY_KEY".equals(c.getType())).count();
         assertEquals(1, pkCount);
 
-        ConstraintMetadata pk = constraints.stream().filter(c -> "PRIMARY".equals(c.getType())).findFirst().get();
+        ConstraintMetadata pk = constraints.stream().filter(c -> "PRIMARY_KEY".equals(c.getType())).findFirst().get();
         assertEquals(List.of("id", "org_id"), pk.getColumns());
     }
 
     @Test
     public void testIndexes() throws Exception {
         Connection mockConn = mock(Connection.class);
+        setupMockDatabaseMetaData(mockConn);
+
         Statement mockStmt = mock(Statement.class);
+        PreparedStatement mockPrepStmt = mock(PreparedStatement.class);
         ResultSet mockRsTables = mock(ResultSet.class);
         ResultSet mockRsIndexes = mock(ResultSet.class);
 
         when(mockConn.createStatement()).thenReturn(mockStmt);
-        when(mockStmt.executeQuery(anyString()))
+        when(mockConn.prepareStatement(anyString())).thenReturn(mockPrepStmt);
+
+        when(mockPrepStmt.executeQuery())
                 .thenReturn(mockRsTables)
                 .thenReturn(mock(ResultSet.class)) // Columns
                 .thenReturn(mock(ResultSet.class)) // PKs
                 .thenReturn(mock(ResultSet.class)) // FKs
+                .thenReturn(mock(ResultSet.class)) // CheckConstraints
+                .thenReturn(mock(ResultSet.class)) // UniqueConstraints
                 .thenReturn(mockRsIndexes);
 
         when(mockRsTables.next()).thenReturn(true).thenReturn(false);
@@ -317,7 +351,7 @@ public class MySQLExtractorTest {
         // NON_UNIQUE: 0 = Unique, 1 = Non-Unique
         when(mockRsIndexes.getInt("NON_UNIQUE")).thenReturn(0, 1, 1);
 
-        MySQLExtractor extractor = new MySQLExtractor();
+        MySQLExtractor extractor = new MySQLExtractor("test_db");
         DatabaseMetadata metadata = extractor.extract(mockConn);
         TableMetadata table = metadata.getTable("users");
 
