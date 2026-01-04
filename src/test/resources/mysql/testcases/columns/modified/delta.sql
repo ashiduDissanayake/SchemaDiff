@@ -1,0 +1,6 @@
+-- Delta: Modify column types in USERS table
+-- Tests detection of column type changes
+
+ALTER TABLE USERS MODIFY COLUMN USERNAME VARCHAR(100) NOT NULL;
+ALTER TABLE USERS MODIFY COLUMN STATUS VARCHAR(50) DEFAULT 'PENDING';
+

@@ -1,0 +1,31 @@
+-- Delta: Complex scenario with multiple changes
+-- Tests the "kitchen sink" - many different types of changes at once
+
+-- 1. Drop a table
+DROP TABLE IF EXISTS TOKENS;
+
+-- 2. Add an extra table
+CREATE TABLE IF NOT EXISTS CUSTOM_CONFIG (
+    CONFIG_KEY VARCHAR(100) NOT NULL,
+    CONFIG_VALUE TEXT,
+    PRIMARY KEY (CONFIG_KEY)
+) ENGINE=InnoDB;
+
+-- 3. Remove columns
+ALTER TABLE USERS DROP COLUMN TENANT_ID;
+
+-- 4. Add extra columns
+ALTER TABLE USERS ADD COLUMN CUSTOM_FIELD VARCHAR(255);
+
+-- 5. Modify column types
+ALTER TABLE USERS MODIFY COLUMN STATUS VARCHAR(50) DEFAULT 'UNKNOWN';
+
+-- 6. Drop a constraint
+ALTER TABLE USER_ROLES DROP FOREIGN KEY FK_USER_ROLES_USER;
+
+-- 7. Drop an index
+ALTER TABLE AUDIT_LOG DROP INDEX IDX_AUDIT_TIMESTAMP;
+
+-- 8. Add an extra index
+CREATE INDEX IDX_AUDIT_DETAILS ON AUDIT_LOG(DETAILS(100));
+

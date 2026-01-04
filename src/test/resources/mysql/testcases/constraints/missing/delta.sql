@@ -1,0 +1,7 @@
+-- Delta: Drop constraints from tables
+-- Tests detection of missing constraints
+
+ALTER TABLE USERS DROP INDEX UK_USERS_EMAIL;
+ALTER TABLE USER_ROLES DROP FOREIGN KEY FK_USER_ROLES_USER;
+ALTER TABLE TOKENS DROP CHECK CHK_TOKEN_STATE;
+
