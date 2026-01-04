@@ -74,6 +74,16 @@ public class SchemaDiffRunner {
         }
     }
 
+    /**
+     * Compares using a GenericTestContext (works with all database types).
+     */
+    public ComparisonResult compare(GenericTestContext ctx) throws Exception {
+        try (Connection refConn = ctx.getRefConnection();
+             Connection targetConn = ctx.getTargetConnection()) {
+            return compare(refConn, targetConn);
+        }
+    }
+
     private MetadataExtractor createExtractor() {
         return switch (dbType) {
             case MYSQL -> new MySQLExtractor();

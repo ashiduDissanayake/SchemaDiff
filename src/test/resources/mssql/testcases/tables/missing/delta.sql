@@ -1,0 +1,7 @@
+-- Delta: Remove tables from target (MSSQL)
+-- Tests detection of missing tables
+DROP TABLE IF EXISTS TOKENS;
+DROP TABLE IF EXISTS USER_ATTRIBUTES;
+DROP TABLE IF EXISTS USER_ROLES;
+DROP TABLE IF EXISTS USERS;
+

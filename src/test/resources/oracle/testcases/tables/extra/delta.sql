@@ -1,0 +1,13 @@
+-- Delta: Add extra tables to target (Oracle)
+-- Tests detection of extra tables
+CREATE TABLE UNAUTHORIZED_TABLE (
+    ID NUMBER(10) PRIMARY KEY,
+    DATA CLOB
+);
+
+CREATE TABLE DEBUG_LOG (
+    ID NUMBER(10) PRIMARY KEY,
+    MESSAGE CLOB,
+    CREATED_AT TIMESTAMP DEFAULT SYSTIMESTAMP
+);
+

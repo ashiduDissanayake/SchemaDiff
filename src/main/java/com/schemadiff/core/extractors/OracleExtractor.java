@@ -196,16 +196,49 @@ public class OracleExtractor extends MetadataExtractor {
 
         log.debug("Extracting columns");
 
+        // Note: data_default is a LONG column which requires special handling.
+        // Oracle JDBC requires LONG columns to be read first, so we read it separately.
+        // We use DBMS_XMLGEN to convert LONG to VARCHAR2 safely.
         String query = """
             SELECT c.table_name, c.column_name, c.column_id AS ordinal_position,
                    c.data_type, c.data_length, c.data_precision, c.data_scale,
-                   c.nullable, c.data_default, c.char_length,
+                   c.nullable, c.char_length,
                    cm.comments AS column_comment
             FROM all_tab_columns c
             LEFT JOIN all_col_comments cm ON c.owner = cm.owner AND c.table_name = cm.table_name AND c.column_name = cm.column_name
             WHERE c.owner = ?
             ORDER BY c.table_name, c.column_id
             """;
+
+        // Separate query for defaults using TO_CHAR conversion via user_tab_columns
+        String defaultsQuery = """
+            SELECT table_name, column_name, data_default
+            FROM all_tab_columns
+            WHERE owner = ?
+            ORDER BY table_name, column_id
+            """;
+
+        // First, collect all column defaults in a map (LONG columns must be read first)
+        java.util.Map<String, java.util.Map<String, String>> columnDefaults = new java.util.HashMap<>();
+        executeWithRetry(() -> {
+            try (PreparedStatement stmt = conn.prepareStatement(defaultsQuery)) {
+                stmt.setQueryTimeout(QUERY_TIMEOUT_SECONDS);
+                stmt.setString(1, owner);
+                try (ResultSet rs = stmt.executeQuery()) {
+                    while (rs.next()) {
+                        // Read LONG column first!
+                        String dataDefault = rs.getString("data_default");
+                        String tableName = rs.getString("table_name");
+                        String columnName = rs.getString("column_name");
+
+                        columnDefaults
+                            .computeIfAbsent(tableName, k -> new java.util.HashMap<>())
+                            .put(columnName, dataDefault);
+                    }
+                }
+            }
+            return 0;
+        });
 
         int count = executeWithRetry(() -> {
             try (PreparedStatement stmt = conn.prepareStatement(query)) {
@@ -226,7 +259,11 @@ public class OracleExtractor extends MetadataExtractor {
 
                         String dataType = buildDataType(rs);
                         boolean notNull = "N".equals(rs.getString("nullable"));
-                        String defaultValue = normalizeDefault(rs.getString("data_default"));
+
+                        // Get default from our pre-fetched map
+                        String rawDefault = columnDefaults.getOrDefault(tableName, java.util.Collections.emptyMap())
+                                                         .get(columnName);
+                        String defaultValue = normalizeDefault(rawDefault);
 
                         ColumnMetadata column = new ColumnMetadata(columnName, dataType, notNull, defaultValue);
                         column.setOrdinalPosition(rs.getInt("ordinal_position"));

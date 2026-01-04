@@ -159,8 +159,11 @@ class CLIExecutionTest {
     // === Helper Methods ===
 
     private ProcessResult executeSchemaDiff(String... args) throws Exception {
+        // Find Java 21+ executable - check JAVA_HOME first, then fallback to PATH
+        String javaExe = findJava21Executable();
+
         String[] command = new String[args.length + 3];
-        command[0] = "java";
+        command[0] = javaExe;
         command[1] = "-jar";
         command[2] = JAR_PATH;
         System.arraycopy(args, 0, command, 3, args.length);
@@ -185,6 +188,35 @@ class CLIExecutionTest {
         }
 
         return new ProcessResult(process.exitValue(), stdout, stderr);
+    }
+
+    /**
+     * Find a Java 21+ executable. Checks:
+     * 1. JAVA_HOME environment variable
+     * 2. Current JVM's java.home property
+     * 3. Falls back to "java" in PATH
+     */
+    private String findJava21Executable() {
+        // First, try using the same Java that's running the tests
+        String javaHome = System.getProperty("java.home");
+        if (javaHome != null) {
+            File javaExe = new File(javaHome, "bin/java");
+            if (javaExe.exists() && javaExe.canExecute()) {
+                return javaExe.getAbsolutePath();
+            }
+        }
+
+        // Check JAVA_HOME environment variable
+        String envJavaHome = System.getenv("JAVA_HOME");
+        if (envJavaHome != null) {
+            File javaExe = new File(envJavaHome, "bin/java");
+            if (javaExe.exists() && javaExe.canExecute()) {
+                return javaExe.getAbsolutePath();
+            }
+        }
+
+        // Fallback to java in PATH
+        return "java";
     }
 
     private Path createTempSqlFile(String prefix, String content) throws Exception {
